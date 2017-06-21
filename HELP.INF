@@ -1,0 +1,556 @@
+! ----------------------------------------------------------------------------
+!   Help menu (the hint system is based on Gareth Rees' Christminster code)
+! ----------------------------------------------------------------------------
+
+Property puzzle_width alias n_to;
+Property puzzle_hints alias s_to;
+Property puzzle_done  alias e_to;
+Property puzzle_state alias w_to;
+Property puzzle_name  alias u_to;
+Property multi_hints  alias d_to;
+
+Object  Puzzles "all the puzzles"
+  with
+    number 0,
+    puzzle_array
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+    DoneHint     [ p h; if(p.multi_hints==0) p.&puzzle_done->h=1; ],
+    PuzzleSeen   [ p; if (p.puzzle_state==0) p.puzzle_state=1; ],
+    PuzzleSolved [ p; p.puzzle_state=2; ];
+
+Object ->  WhatNextPuzzle
+ with   multi_hints  0,
+        puzzle_width 17,
+        puzzle_state 1,
+        puzzle_name  "Help, I'm stuck! What do I do now?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints
+            "Try finding out where your family is."
+            "You'd better take the car and get the remaining stuff, \
+            like your wife suggests."
+            "It seems like you can't refuse the aliens. \
+            You have to find a way to enter the research centre."
+            "Visit Dr. Williams."
+            "From now on you are on your own. Don't forget to examine everything, \
+            and to draw a map. Observe the people at the center and ask them for \
+            clues to lead you to the sphere.^^\
+            It is much more rewarding to solve the game without help, but \
+            if you are completely stuck you can revisit this hint page. \
+            It will list hints for the problems which are currently \
+            possible to solve. If you need more help you will find \
+            walk-throughs at the Interactive Fiction Archive, \
+            ftp://ftp.gmd.de/if-archive. You can also try the \
+            rec.games.int-fiction newsgroup."
+        ;
+
+Object ->  GettingStartedPuzzle
+ with   multi_hints  1,
+        puzzle_state 1,
+        puzzle_width 14,
+        puzzle_name  "How can I find my family?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints
+            "Maybe they've left a message somewhere?"
+            "Where would you leave a message?"
+            "Take a closer look at the table in the living room!"
+        ;
+
+Object ->  EnterCentrePuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 15,
+        puzzle_name  "How do I enter the research centre?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints 
+            "The obvious way would be to use the rope way."
+            "There is a keyhole in the control panel."
+            "There is a spare key to the cable car hidden somewhere nearby."
+        ;
+
+Object -> StoragePuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 14,
+        puzzle_name  "How do I enter the storage?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints 
+            "There should be a key somewhere around."
+            "Sometimes things wind up in the least likely places."
+            "Concentrate you efforts on the castle area."
+        ;
+
+Object -> WashMyselfPuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 10,
+        puzzle_name  "How do I get clean?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints 
+            "You will need some water."
+            "What is water, but melted snow?"
+            "There is a kettle on the second floor of the castle."
+            "You will need a ladder to reach it."
+        ;
+
+Object -> CellarStorePuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 17,
+        puzzle_name  "How do I enter the cellar storage?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints 
+            "It won't be easy. The door is locked and you don't have a key."
+            "Other people go there from time to time. Hang around."
+            "The problem is that they will keep an eye on your activities."
+            "The door has a self-locking mechanism."
+            "Block it and you will have free access."
+        ;
+
+Object -> OpenGratingPuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 14,
+        puzzle_name  "How do I open the grating?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints 
+            "The grating is stuck. You can't open it by hand."
+            "It can be opened though. The trick is to apply greater force."
+            "The force of nature is powerful indeed."
+            "Think Newton."
+            "Think a very heavy object connected to the grating."
+        ;
+
+Object ->  LockedOfficePuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 17,
+        puzzle_name  "How do I enter the locked office?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints 
+            "The office contains something you need."
+            "It is locked, and there is no key in sight."
+            "Did you really examine the door?"
+            "You need to pick the lock."
+            "You will need something thin and hard."
+        ;
+
+Object ->  ParrotPuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 12,
+        puzzle_name  "Is the parrot important?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints 
+            "You bet."
+            "It belongs to Dr. Williams."
+            "It does speak a lot, doesn't it?"
+            "Mentioning certain phrases might bring memories back to life."
+        ;
+
+Object ->  WhiskyPuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 17,
+        puzzle_name  "How do I get information from John?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints 
+            "Gossip travels easily. Try to find out more about him."
+            "Hard habit must be hard to break."
+            "Bringing the old opium to him will not be easy."
+            "Dr. Williams can be outwitted though."
+            "Just bring a container before meeting him. And don't get caught!"
+            "While intoxiated, John may slip secrets if asked the proper question."
+        ;
+
+Object ->  DogPuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 14,
+        puzzle_name  "How do I outwit the dog?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints 
+            "You should try to get the dog out of the room for a while."
+            "First, you will need to disctract him to get him off his guard."
+            "There aren't that many different things dogs care about."
+            "Food is one of them."
+            "Playing games is another."
+            "Just giving the food to the dog gives him plenty of time to consider his duties."
+            "With a bit of action, he might resort to instincts instead."
+            "Can you combine food and play?"
+            "Dogs tend to run for objects which are thrown."
+            "Then you will be able to look for something to protect you."
+            "Once you have proper protection, you should be able to get a closer look at the dog."
+	    "The next hint will tell you exactly what to do."
+	    "Get the meat from the fridge, go to the dog, and then..."
+	    "Throw the meat through the window, push the dog and close the window."
+	    "Then you can go east to the hall. There's a pair of coveralls there."
+	    "Wearing the coveralls, you can examine the dog closely."
+	    "There's something about its necklace."
+        ;
+
+Object ->  CupboardPuzzle
+ with   multi_hints  1,
+        puzzle_state 0,
+        puzzle_width 12,
+        puzzle_name  "What about the cupboard?",
+        puzzle_done  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,
+        puzzle_hints
+            "Enter the cupboard and take a close look around."
+            "Notice that both the rear wall and the door hinges are wired."
+            "You must keep the cupboard doors closed while opening the rear wall."
+            "Forget about the bomb, there is something else you'll need."
+            "Examine the side wall of the cupboard from the secret room."
+            "Get the metal bar."
+        ;
+
+[ HelpSub;
+  DoMenu(HelpItems, HelpMenu, HelpInfo);
+];
+
+[ HelpItems;
+  ! First the normal items
+  print "There is information provided on the following:^^";
+  print "     Instructions^";
+  print "     Special features^";
+  print "     About this game^";
+  print "     About the authors^";
+  print "     Game credits^";
+  print "     Contacting, copyright and license information^";
+  print "     Obtaining the latest version^";
+  print "     Hints^";
+];
+
+[ HelpMenu;
+  switch(menu_item) {
+  0: item_width=12;item_name="About Vacation Gone Awry"; return 8;
+  1: item_width=6;item_name="Instructions";
+  2: item_width=8;item_name="Special features";
+  3: item_width=7;item_name="About this game";
+  4: item_width=8;item_name="About the authors";
+  5: item_width=6;item_name="Game credits";
+  6: item_width=23;item_name="Contacting, copyright and license information";
+  7: item_width=14;item_name="Obtaining the latest version";
+  8: item_width=3; item_name="Hints";
+  }
+];
+
+[ HelpInfo i;
+  switch(menu_item) {
+
+  1:"In an interactive fiction story you play the main character and you direct \
+     the course of the history by entering commands to the game, stating what this \
+     character should do. Examples of such commands are:^^\
+
+     LOOK^\
+     NORTH (move north from where you currently stand)^\
+     INVENTORY (list what you are carrying)^\
+     TAKE THE MAP (~the~ can be obmitted)^\
+     EXAMINE IT (~it~ refers to the last object referred to, in this case the map)^\
+     GIVE MAP TO THE WOMAN^\
+     HENKEL, OPEN THE DOOR (order someone to do something)^\
+     ASK JOHN ABOUT PETRA (ask for information)^\
+     THROW THE KNIFE AT THE BLACK BIRD^^\
+
+     There are some common abbreviations:^^\
+     g = AGAIN (repeats the last command)^\
+     i = INVENTORY^\
+     l = LOOK^\
+     x = EXAMINE^\
+     z = WAIT (causes time to pass in the story)^^\
+     Directional commands can also be abbreviated. ~N~ is short for north, ~D~ for
+     down, ~SE~ for southeast, and so on.^^\
+
+     Special commands include ~SCORE,~ ~SAVE,~ ~RESTORE,~ ~RESTART,~ and ~QUIT.~ \
+     There's also ~OOPS,~ used to replace a misspelled word; ~UNDO,~ to take back \
+     your last move; and ~VERBOSE~ and ~BRIEF,~ which control the repetition of room \
+     descriptions.^^\
+     There are two modes of listing your inventory, wide and long. You can \
+     choose between them with the commands ~INVENTORY WIDE~ and \
+     ~INVENTORY TALL~. The game starts in tall mode.";
+
+  2: print "A powerful feature is the ~GO TO~ command, which can take you to places \
+           previously visited automatically. Only places of special interest can be \
+           visited this way, and you can get a list of currently reachable destinations \
+           with the ~GOPLACES~ command (or ~GP~ for short).^^\
+           The status line can be customized with the ~STATUSLINE~ command \
+           (or ~SL~ for short). The syntax for this command is:^^";
+     font off;
+     print "statusline on          - show the status line^";
+     print "statusline off         - hide the status line^";
+     print "statusline score       - show score (if notify on) and turns^";
+     print "statusline score off   - hide score and turns^";
+     print "statusline compass     - show the compass rose^";
+     print "statusline compass off - hide the compass rose^";
+     print "statusline exits       - show a list of available exits^";
+     font on;
+     print "^Please note that if the screen is too narrow some elements \
+           will not be shown.^";
+
+  3:"In 1987 we made an adventure game called ~Flykten~ (The Escape). It was written in \
+     Swedish and had a good parser, but was not very well designed. We released \
+     this commercially and got some reviews, which we carefully read. \
+     Deciding to make a better game next time we sat down and created the \
+     first draft of this game. It was then revised several times in \
+     coffee-table conferences.^^\
+     At the same time we were also working on an adventure game \
+     implementation language called Rabies. Using a new parser \
+     written in this language we made a working version of Vacation Gone Awry, \
+     or Stranded, as it was called then. \
+     It was sent out for beta-testing but never officially released.^^\
+     In 1990 the game was ported from Commodore 64 to the Amiga, by writing a \
+     Rabies interpretator for this machine. Still the game was not perfect, and \
+     no one felt inclined to invest the time necessary to finish it. Some further \
+     efforts were made to convert it, first to Lisp and then TADS, but \
+     they were far from complete.^^In the fall of 1995, we discovered Inform and \
+     immediately understood that this was what we had been looking for. So, we \
+     started porting Stranded to Inform 5, using library 5/12. Since it took a few \
+     years to complete the game in Inform, we finally ended up using Inform 6 and \
+     library 6/2. We made extensive library hacks, to make it work the way we \
+     thought it should, and to accomodate for wishes from playtesters. \
+     For this reason, it would have meant a lot of work going beyond library 6/2 \
+     to the substantially different version 6/3, \
+     and none of us was willing to put in that work.^^\
+     The years went by and we kept trying to add anything and everything our \
+     playtesters thought should work or at least give some sort of reply, like \ 
+     ~It's odd that Williams doesn't care if I put a bag full of junk on his \
+     desk while he's away.~ and a zillion other things like that. Our testers \
+     did a great job, and we had a great time implementing responses for all \
+     sorts of weird actions, but it meant we never felt the game was complete. \
+     During this time, we left university to start working, moved to different \
+     countries, started families etc, and of course game development wasn't always the \
+     top priority. Adding to this the overhead of having to agree all three \
+     on all decisions, and us being in quite different time zones, it's no \
+     wonder the years went by.^^On new years eve 2001, we finally got the game \
+     out the door. We soon discovered a number of pretty important bugs, and \
+     so we got release 2 out shortly after. Again, we discovered some bugs \
+     and shortcomings we wanted to correct, but no real show-stoppers. We fixed \
+     about 35 problems in a month or two after release 2, but didn't get around \
+     to making a new release until four years later, when we fixed a few more \
+     bugs, added better clues for one of the trickier puzzles, and released \
+     it as release 3. This release actually has a smaller file size than \
+     the previous releases. That's actually because we've made the story \
+     bigger and thus have had to start using Zcode \
+     text abbreviations to make the story fit into a Z5 format file.";
+
+  4:"This game was written by Johan Berntsson, Fredrik Ramsberg and Staffan Friberg \
+     who all grew up in V@:astervik, an idyllic port town on the east coast of Sweden.^^\
+     JOHAN BERNTSSON has been interested in adventure games since he \
+     first played ~The Hobbit~ on his Commodore 64 a long, long time ago. \
+     Programming more and more sofisticated parsers played an important part of his \
+     life in the years to follow. Many adventure games were created, some fairly \
+     good, some annoyingly bad. After graduating from Link@:oping University he 
+     moved to Tokyo.^^\
+     FREDRIK RAMSBERG met Johan in 1986 and they have collaborated on various \
+     projects ever since. A few of them have even reached a state where they've \
+     been addressed as 'finished'. Johan and Fredrik made the \
+     first design of this game on a dark night in 1988. Fredrik lives just outside \
+     Stockholm, Sweden.^^\
+     STAFFAN FRIBERG is an old friend of Johan and Fredrik's. He became involved in \
+     additional design, critics, and description authoring.";
+
+  5:"This game has a long history and many people have been involved. We would first of \
+     all like to thank our Commodore 64 testing team: Sten Holmberg and Jan @oAberg.^^\
+     This version would not have been created without Grahams Nelson's excellent \
+     Inform language and library.^^\
+     Testplayers are essential for any game. Many thanks to our most hard-working \
+     alpha-testers, Michael Gerwat and Mattias Fagerlund. Others who have done valuable \
+     contributions in testing are Kevin Doughty, David Sitsky, Fredrik Andersson and \
+     Patrik Ekeroth.^^\
+     Testing is a continuous process and we also want to thank the people who have \
+     sent us bug reports since the first official release:^^\
+     Erik Wilson, Kevin Bracey, Arild Grebstad, Stas Starkov, Philip Dearmore, \
+     Graham Holden and Al.^^\
+     (This spot is reserved for you... please report any bugs you find to \
+     vacation@@64ramsberg.net)^^\
+     Finally, thank you for playing this game!";
+
+  6: "This game is Copyright (c) 1988-2006 by Johan Berntsson, Fredrik Ramsberg and \
+     Staffan Friberg. It may be played free of charge. It may also be freely distributed \
+     provided that the game file remains unmodified and no one has to pay anything to receive it. \
+     Converting the story file to another format is allowed only to the extent \
+     necessary to allow playing on another platform, like a PDA. If distributed in such \
+     a converted state, the game must be accompanied either by an unmodified version, or \
+     by precise instructions on how to obtain such a version for free over the Internet. \
+     The game may be included in software collections, provided that no one has to pay \
+     anything for the collection. \
+     It may be disassembled or analysed in other ways, but only for private, \
+     non-commercial use, and the results may not be distributed in any form. \
+     The game may not be used in any other way than what has been explicitly allowed \
+     here. If in doubt, or you want to request permission to use the game in some \
+     other way, please contact the authors using the e-mail address below.^^\
+     The game is provided ~as is~ with no warranties whatsoever.^^\
+     Fan letters and bug reports can be e-mailed to vacation@@64ramsberg.net^^\
+     If you've played this game for a while, please send us some feedback. Just knowing \
+     what you thought about it and why would mean a lot to us. Feedback is fuel \
+     for interactive fiction authors.";
+
+  7: "The latest version of this game can always be obtained at \
+     http://www.ifarchive.org/indexes/if-archiveXgamesXzcode.html - search for Vacation.";
+     
+  8: ! Show hint menu
+     Puzzles.number=0;
+     objectloop(i in Puzzles) {
+       if(i.puzzle_state==1) Puzzles.&puzzle_array-->(Puzzles.number++)=i;
+     }
+     DoMenu(HintItems, HintMenu, HintInfo);
+     return 2; ! to avoid "Please press SPACE"
+  }
+  return 0;
+];
+
+[ HintItems i;
+  print "These hints are currently available:^^";
+  for(i=0: i<Puzzles.number: i++) {
+    print "     ", (string) (Puzzles.&puzzle_array-->i).puzzle_name, "^";
+  }
+];
+
+[ HintMenu;
+  if(menu_item==0) {
+    item_width=3;
+    item_name="Hints";
+    return Puzzles.number;
+  } else {
+    item_width=(Puzzles.&puzzle_array-->(menu_item-1)).puzzle_width;
+    item_name=(Puzzles.&puzzle_array-->(menu_item-1)).puzzle_name;
+  }
+];
+
+[ HintInfo i j pkey;
+   i=(Puzzles.&puzzle_array-->(menu_item-1));
+   if(i.multi_hints==1) {
+     for(j=0: j<(i.#puzzle_hints/2): j++) {
+       if((i.&puzzle_done)->j==1) {
+         ! show already revealed hints
+         print "^", (string) (i.&puzzle_hints)-->j, "^";
+       } else {
+         ! ask user if more hints are needed
+         if(j>0) {
+           print "^[Press N to get the next hint or Q to return to the menu.]^";
+           @read_char 1 0 0 pkey;
+           if(pkey=='Q' or 'q' or 27) return 2;
+         }
+         print "^", (string) (i.&puzzle_hints)-->j, "^";
+         i.&puzzle_done->j=1;
+       }
+     }
+   } else {
+     new_line;
+     for(j=0: j<(i.#puzzle_hints/2): j++)
+       if((i.&puzzle_done)->j==0) print_ret (string) (i.&puzzle_hints)-->j;
+     print "No more hints.^";
+   }
+];
+
+! ----------------------------------------------------------------------------
+!   Amusing things
+! ----------------------------------------------------------------------------
+
+[ AmusingItems;
+  print "There is information provided on the following:^^";
+  print "     Congratulations!^";
+  print "     Did you notice?^";
+  print "     Alternative solutions^";
+];
+
+[ AmusingMenu;
+  switch(menu_item) {
+  0: item_width=7; item_name="Amusing things"; return 3;
+  1: item_width=8; item_name="Congratulations!";
+  2: item_width=7; item_name="Did you notice?";
+  3: item_width=11;item_name="Alternative solutions";
+  }
+];
+
+[ AmusingInfo;
+  switch(menu_item) {
+  1:"Congratulations! Thank you for staying with us until the end. We hope \
+     that you found the game amusing.^^We always appreciate comments, so \
+     please send us e-mail. Our address is vacation@@64ramsberg.net";
+  2: print "* People get annoyed if you try to share the bathroom with them.^^";
+     print "* Jumping on sofas and beds can provoke interesting comments.^^";
+     print "* Did you try putting many things in the trophy case?^^";
+     print "* Did you try closing a door that someone else just opened? Repeat a few times. Enjoy!^^";
+     print "* Taking the painting in the living room is harder than one might expect.^^";
+     print "* Did you try kissing Petra? Several times?^^";
+     print "* Ever played The Lurking Horror, or seen War Games? \
+           The login/password combinations featured there can be used to \
+           access the computers in the centre.^^";
+     print "* John gets pretty upset if you give him liquids other than whisky, such as water.^^";
+     print "* Sleeping in the toolshed while the scooter is running can be dangerous.^^";     
+     print "* The parrot belongs to Dr. Williams.^^";
+     print "* Petra has a broken heart. Ask her about Stefan, or ask John about Petra.^^";
+     print "* The dog's owner is Petra. Ask her about dogs.^";
+  3: print "The cable car:^\
+            1. The simplest way is to find the key.^\
+            2. But you can also walk on the wire. Climb up on the cable car roof and \
+               climb onto the wire. You can't keep your balance unless you use a balance rod, \
+               but the bow (mounted on the truck in the garage) can be used for this.^\
+            3. Did you try knocking on the door in the cable car terminal? The service man can take \
+            you to the centre, but you must not be seen. Hide on the roof of the cable car!^^";
+     print "Washing yourself:^\
+            1. You can fill the kettle with snow and put it in a warm room \
+               (but not in the centre).^\
+            2. Or you could put it on a fire \
+               (use the wood and fireplace in the castle).^
+            3. You can use a bottle to fill the kettle with water from \
+               the bathroom tap.^";
+  }
+];
+
+! ----------------------------------------------------------------------------
+!   Questions
+! ----------------------------------------------------------------------------
+
+Object questions "qs";
+
+Object -> q0 "I"
+  with name "i",
+    description "You are the main character in this story.";
+
+Object -> q1 "interactive fiction"
+  with name "stranded" "vacation" "gone" "awry" "interactive" "fiction" "adventure"
+      "game" "story" "games" "stories",
+    description
+       "Interactive Fiction (aka adventure games) are games which through text \
+       and/or graphics describes a virtual world. The player can interact in this \
+       world, which will react accordingly. There is usually a puzzle solving element \
+       involved, and some goal to achieve.^^This game is an example of interactive \
+       fiction, and game specific information is available with the ~help~ command.";
+
+Object -> q2 "inform"
+  with name "inform" "infocom" "zork",
+    description
+      "Inform is a language and library package designed to produce \
+      interactive fiction, like the game you are now playing. The format of the \
+      game files is the same as Infocom used in their successful series of \
+      interactive fiction (including Zork, Enchanter and Trinity) in the 1980's.";
+
+Object -> q3 "grue"
+  with name "grue" "grues",
+    description
+      "Although it is very unlikely that you will encounter any grues in this game, \
+      let's hear what Infocom's Zork I has to say on the subject:^^\
+      ~The grue is a sinister, lurking presence in the dark places of the earth. Its \
+      favorite diet is adventurers, but its insatiable appetite is tempered by its \
+      fear of light. No grue has ever been seen by the light of day, and few have \
+      survived its fearsome jaws to tell the tale.~";
+
+Object -> q4 "authors"
+  with name "johan" "berntsson" "staffan" "friberg" "fredrik" "ramsberg",
+    description
+      "He is one of the authors of this game. Why don't you type ~help~ \
+      to find out more about him?";
+
+Object -> q5 "amy"
+  with name "amy" "wife",
+    description
+      "Amy is your wife and the mother of your children. Don't tell me you forgot \
+      who she is.";
+
+Object -> q6 "children"
+  with name "child" "children" "daughter" "daughters" "sally" "caroline",
+    description
+      "Sally and Caroline are your lovely daughters. They have been looking forward to \
+      this trip for months, so you really hope it will be a great vacation.";

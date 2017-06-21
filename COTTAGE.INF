@@ -1,0 +1,573 @@
+!################# Intro Start - Cottage area
+
+Room Driveway "Driveway"
+  with
+    description [;
+      print "You are";
+      if (player in self) print " standing";
+      " on the driveway, in front of the small cabin you and \
+      your wife bought ten years ago, just after you were married. The \
+      cabin's door is north of here, and the road stretches away to the \
+      south. All around you, the snow-covered trees of the Black Forest \
+      stand silently.";
+    ],
+    singledest 'driveway',
+    n_to CottageFrontDoor, s_to CottageRoad,
+    before [;
+      Go:
+        if ((player in car) && (noun ~= s_obj))
+          "This is where you park your car, and you can only drive south from here.";
+    ],
+    each_turn [;
+      if(Sweater hasnt worn) {
+        if(self hasnt general || random(100)<25) {
+          give self general;
+          "^The chilly air makes you shiver.";
+        }
+      }
+    ],
+  has light;
+
+Object -> DummyCottage "dummycottage"
+  with
+    name "cabin" "cottage" "house" "small",
+    description "It's a small cabin lying by itself at the edge of the \
+      wood. The cabin is painted brown with a red tiled roof. Although \
+      you have promised to do so many times the chimney still isn't \
+      repaired yet. After all it's only a missing brick.",
+  has static concealed;
+
+Object -> DummyRoof "roof"
+  with
+    name "roof",
+    description "It's made of red tiles.",
+  has static concealed;
+
+Object -> DummyCottageChimney "chimney"
+  with
+    name "chimney",
+    description "It's made of red bricks. One of them is missing.",
+  has static concealed;
+
+Object -> DummyBrick "brick"
+  with
+    name "brick" "bricks",
+    description "They're all ordinary red bricks.",
+  has static concealed;
+
+Object -> DummyTile "tile"
+  with
+    name "tile" "tiles",
+    description "They're all common red tiles, used for making tiled roofs.",
+  has static concealed;
+
+
+Object -> Car "car"
+  with
+    name "car" "ford" "reliable" "engine" "motor",
+    when_on  "Your car is here, its engine running. German evergreens \
+      emerge from it.",
+    when_off "Your car is parked here.",
+    before [;
+      Enter:
+        if(self hasnt open && self hasnt locked) {
+          give self open;
+          print "(opening the car door first)^^";
+          rfalse;
+        }
+      Go:
+        if(Car has open) {
+          print "You'd better close the car door first.^";
+          return 2;
+        }
+        if(Car hasnt on) {
+          print "The engine isn't running.^";
+          return 2;
+        }
+
+        return 1;
+      Examine:
+        print "You notice nothing unexpected about the old Ford Sierra. \
+                It's a little rusty and the right windscreen wiper isn't working, as usual.";
+        if (Car has open) " The car door stands open.";
+        if (Car has on)
+          " A silent rumble informs you that the car engine is running. \
+            Loud German evergreens informs you that so is the radio.";
+        " The engine is quiet.";
+      SwitchOn:
+      if(car has on)
+        "But the engine is already running!";
+      if(player notin car)
+          "It would help if you were in the car.";
+        if(Car has open) {
+          give Car ~open;
+          print "(closing the car door first)^^";
+        }
+        give Car on;
+        "You start the car. Unfortunately, this also starts the stereo.";
+      SwitchOff:
+        if(car hasnt on)
+                "The engine isn't running.";
+        if(player notin car)
+          "It would help if you were in the car.";
+              give Car ~on;
+        "You turn off the engine. The radio goes quiet too. That's a relief!";
+    ],
+    after [;
+    Open: "You open the car door.";
+    Close: "You close the car door.";
+    ],
+    add_to_scope [;
+      move CarDoor to location;
+    ],
+  has switchable openable enterable static container transparent;
+
+Object -> -> CarStereo "stereo"
+  with
+    name "car" "stereo" "radio" "sound" "system"
+      "ghastly" "german" "music" "evergreen" "channel" "station",
+    parse_name [; return NastyName(self, 1); ],
+    before [;
+     Change:
+      if(Car has on) "It is not possible. The radio is stuck on this channel.";
+      "The radio is off.";
+     Examine:
+      print "Basically, it's a radio with a loudspeaker. So, by the \
+              strict meaning of the word, it's not really a stereo, but that's \
+            what you call it. It is turned on, ";
+      if (Car has on)
+             "and some ghastly German music is emerging from it.";
+      "but since the car is off, the radio is quiet.";
+     SwitchOff:
+      if(Car hasnt on) "Since the car isn't running, the radio is silent \
+        as well. That's as good as it gets.";
+      "You sure wish you could. However, the volume knob is stuck at a \
+      position pretty close to maximum, and the frequency is fixed to \
+      a station playing German evergreens, with loud and clear sound \
+      in all places you have ever visited with this car. At least it \
+      saves the environment by keeping you from driving unless you \
+      have to.";
+     SwitchOn:
+      if(Car hasnt on) "The car and the stereo have an unholy alliance. \
+        Either both start or none start.";
+      "It's already on. That's the problem.";
+     Listen:
+      if(car has on)
+        "It plays all the German evergreens you have never wanted to hear.";
+      "It is quiet, thank god.";
+     Attack:
+      "Oh, it's not that you haven't tried breaking the evil machine. The \
+      radio has come much closer to breaking you, however, than you have \
+      ever come to breaking the radio.";
+     Take:
+      "For reasons that you don't understand, the radio has been glued to \
+      the compartment where it sits. Perhaps it's to prevent it from being \
+      stolen. Regrettably, it hasn't.";
+    ],
+  has switchable on static concealed;
+
+Object CarDoor "car door"
+  with
+    name "car" "door",
+    parse_name [; return NastyName(self, 1); ],
+    describe [; rtrue; ],
+    description [;
+      print "It is an ordinary car door";
+      if(Car has open) print ", currently open";
+      ", providing access to your Ford Sierra.";
+    ],
+    before [;
+    Open: <<Open Car>>;
+    Close: <<Close Car>>;
+    ],
+  has static;
+
+Room CottageRoad "Road"
+  with
+    description "The road starts here. To the north you can see \
+      your driveway and beyond that your little cabin. To the south the \
+      road goes on for about 50 kilometres before coming to the nearest \
+      small town. 50 narrow, twisty, snowy kilometres, that is.",
+    n_to Driveway,
+    s_to [;
+      if(CottageRoad has general) {
+        give Car ~on;
+        return Road;
+      }
+      "It's pretty far to the nearest town so it probably wouldn't \
+      be a very good idea to walk.";],
+    before [;
+      Go:
+      if ((noun == s_obj) && (player in car) && (Car has on)) {
+        if (Note hasnt general)
+          "You don't know where your family is, and you don't seem to \
+          care!";
+        give CottageRoad general;
+      Puzzles.DoneHint(WhatNextPuzzle, 1);
+        print "^You head off to town...^^After about \
+          half an hour of your journey it begins to snow lightly. You \
+          decide to go on, hoping it won't turn into a blizzard, \
+          which it naturally does. With reduced speed you struggle \
+          along for another fifteen minutes or so. Suddenly the engine \
+          stops. You try to start it a couple of times before you \
+          realize that neither the lights nor the stereo seem to be \
+          working. As you lean back to consider your situation, you \
+          notice a faint blue light through the falling snow. ^^A \
+          few seconds later, you hear a soft voice through the \
+          loudspeakers: ^^~We are sorry about having to interrupt \
+          your journey, but we are in great need of your help. \
+          Due to a serious miscalculation we were forced to make an \
+          emergency landing on your planet. At the critical entrance \
+          to the atmosphere a vital part of the power supply system \
+          broke loose from the ship and fell down somewhere in the \
+          vicinity. Unfortunately it was found by a local citizen \
+          and brought to a research centre located a few kilometres \
+          west of here. The scientists at the centre do not realize how \
+          dangerous this part is; if they expose the core to oxygen \
+          it will blow up, creating an enormous cloud of highly \
+          poisonous gas. This cloud will drift out over the \
+          landscape killing everything subjected to it.~";
+        print "^^After a moment the voice continues: ~You must \
+          retrieve this object for us, or catastrophe will \
+          be inevitable. It is a metal sphere with a \
+          diameter of 250 millimetres. The sphere is beta radiant so \
+          you should handle it with care and not expose yourself to it \
+          for long periods of time. We cannot search for the sphere \
+          ourselves, as your atmosphere is lethal to us. We hope you \
+          understand how serious the situation is and do your best to \
+          help us. Thank you.~^^The voice fades out and a few moments \
+          later the lights go on again.^^";
+      }
+    ],
+  has light;
+
+Room CottageLivingroom "Living Room"
+  with
+    description [;
+      print "You have entered the largest room of the house. There \
+        is a fireplace in one corner, with a bearskin rug in front of it.
+        Also in the room are a table, an armchair and a sofa.";
+      if (parent(firewood) == CottageLivingRoom)
+        print" Beside the fireplace is a pile of neatly stacked wood.";
+      " The front door is to the south and two other doors lead northwest \
+      and northeast.";
+    ],
+    doubledest 'living' 'room',
+    before [;
+     Jump:
+      if(noun>0) rfalse;
+      if(player in ArmChair or Sofa) 
+      {
+        give parent(player) general;
+        "Why can't you just sit still and relax for a moment?";
+      }
+      if(player in BearSkin)
+        "You jump up and down a few times. You feel uncertain as to why, \
+        though.";
+    ],
+    s_to CottageFrontDoor, ne_to CottageBedroomDoor,
+    nw_to CottageKitchenDoor, 
+  has light;
+
+ScenerySupporter -> ArmChair "armchair"
+  with
+    name "arm-chair" "arm" "chair" "armchair",
+    article "an",
+    description [;
+      self.write_contents(TRUE, 
+            "A comfortable little armchair. It has been \
+            standing here for as long as you've owned the place.");
+    ],
+  has enterable;
+
+ScenerySupporter -> Sofa "sofa"
+  with
+    name "sofa" "nice" "little" "bed",
+    description [;
+      self.write_contents(TRUE, 
+            "A nice little sofa that stands beside the table along \
+            one wall. The sofa is the kind that can be made into a bed. \
+            This is where your daughters sleep.");
+    ],
+    before [;
+    Open:
+      "You could convert the sofa into a bed, but why? Your own bed is \
+      much nicer and your daughters would be furious if you used 
+      theirs.";
+    ],
+  has enterable;
+
+ScenerySupporter -> BearSkin "bearskin"
+  with 
+    name "bear" "skin" "bearskin" "old" "worn" "rug" "carpet",
+    description [;
+      self.write_contents(TRUE,
+            "An old and somewhat worn bearskin lies before the \
+            fireplace. Your wife has always thought it a nice touch, but \
+            you are only reminded of bad Hollywood movies when you see it.");
+    ],
+    before [;
+     Take, Push, Pull:
+      "The rug is much too heavy to lift and moving it aside \
+      reveals no trapdoor. It's been lying on the same spot for as \
+      long as you remember, so the floor is a little brighter and less \
+      worn where the skin has been.";
+    ],
+    has enterable;
+
+SceneryContainer -> LivingroomFirePlace "fireplace"
+  with 
+    name "fireplace",
+    description [;
+      print "Simply a place where you can have an open fire in a corner \
+        of the room. It's a little dusty since it hasn't been used for \
+        quite a while.";
+      self.write_contents(false, " In the fireplace you can see ");
+      print "^";
+    ],
+    before [;
+     Enter:
+      "You are just about to climb into the fireplace, when suddenly \
+      you realize what you are about to do. You will put black footprints \
+      all over the floor, and you can just see yourself trying to explain \
+      to your wife why you had to stomp around in the fireplace. You decide \
+      against it.";
+    ],
+  has open;
+
+ScenerySupporter -> LivingroomTable "living room table"
+  with
+    name "table",
+    description [; 
+      if(self hasnt general) {
+        give self general;
+        move Note to self;
+        "You discover a tiny piece of paper on the table! Being the same colour as the \
+          table, you didn't spot it at first.";
+      } else {
+        self.write_contents(TRUE,
+              "A low table of the kind normally found in living rooms.");
+      }
+    ],
+    before [;
+      Enter: "Sure you've heard about ~dancing on the tables~. This isn't \
+        the kind of table they mean.";
+    ],
+  has enterable;
+
+Burnable Note "note"
+  with
+    name "burning" "tiny" "note" "piece" "of" "paper" "message",
+    description [;
+      Achieved(0);
+      Puzzles.DoneHint(WhatNextPuzzle, 0);
+      Puzzles.PuzzleSolved(GettingStartedPuzzle);
+
+      give self general;
+      "It's a note from your wife, saying:^^Hi darling!^^The \
+      kids and I are out in the woods looking at birds. We took \
+      lunch so we'll stay out for a while. Don't forget to drive into \
+      town to get the stuff we forgot to bring.^^\
+      Be careful now and we'll see you tonight.^^\
+      Love, Amy.";
+    ];
+
+Room CottageBedroom "Bedroom"
+  with
+    description "You are in your bedroom. Most of the floor \
+      space is taken by a rather large double bed. Against the wall is a \
+      small table, in front of which is a chair. In one corner of \
+      the room is a large closet. A door leads southwest.",
+    singledest 'bedroom',
+    before [;
+     Jump:
+      if(noun>0) rfalse;
+      if(parent(player)==BedroomBed) 
+        "You jump up and down in the bed for a while. You're really enjoying
+        it, but then you stop because you feel silly. Perhaps that's just
+        the price you pay for growing up.";
+    ],
+    sw_to CottageBedroomDoor,
+  has light;
+
+ScenerySupporter -> BedroomBed "double bed"
+  with
+    name "large" "doublebed" "bed" "double",
+    description "It's very comfortable. If you can't sleep well, you can't \
+      enjoy yourself in the daytime, so you decided early on that a good bed \
+      was a high priority expense when furnishing the cottage. ",
+    before [; LookUnder: "Your bad conscience is there, in the form of dust \
+      you should have taken care of when you last cleaned the place."; ],
+  has enterable;
+
+SceneryContainer -> BedroomCupboard "closet"
+  with
+    name "large" "cupboard" "closet",
+    description [;
+      print "In this closet you and your wife keep clothes and \
+      such things.";
+      self.write_contents(false, " It contains ", " It is empty");
+      print "^";
+    ],
+  has openable;
+
+Object -> -> CupboardClothes "large pile of clothes"
+  with
+    name "clothes" "large" "heap" "pile" "of" "shirts" "business" "suit"
+         "trousers" "shirt" "dress" "dresses" "underwear",
+    description "Shirts, trousers, some dresses, a business suit, underwear...",
+    before [;
+    Take, Remove, Search:
+      if(self has general) "You really don't need any more clothes.";
+      give self general;
+      move Sweater to player;
+      "You browse through the clothes and find a warm sweater, which \
+        you take.";
+    ];
+
+ScenerySupporter -> BedroomChair "chair"
+  with
+    name "chair",
+  has enterable;
+
+ScenerySupporter -> BedroomTable "table"
+  with 
+    name "small" "white" "table" "desk",
+    description [;
+      self.write_contents(TRUE,
+        "This is a small, white table standing against the wall. On the \
+        wall behind the table is a mirror.");
+    ],
+    before [;
+      Enter: "Sure you've heard about ~dancing on the tables~. This isn't \
+        the kind of table they mean.";
+    ],
+  has enterable;
+
+Object -> -> MakeupBag "make-up bag"
+  with
+    name "bag" "makeup" "make-up",
+    description "It's your wife's make-up bag. It usually contains \
+      lipstick, eye shadow and other expensive smelly stuff. You can't know \
+      for sure though, since it's closed.",
+    before [;
+    Unlock, UnlockNoKey: "You can't find a way to unlock it.";
+    Take, Remove:
+      "Unless you hope to find a job as a drag queen, there must be more useful \
+        things to bring along than make-up.";
+!      if(MakeupBag hasnt moved) {
+!        move MakeupBag to player;
+!        "Ok, but don't say I didn't warn you. You have tried \
+!        this once before, when you were newly married, and you \
+!        remember that your wife's makeup is never in your colour. \
+!        You have dark brown hair while your wife is blonde. No \
+!        wonder they all looked at you in a funny way at the conference.";
+!      }
+   ],
+    with_key NULL,
+  has openable container lockable locked weird;
+
+Object -> Mirror "mirror"
+  with
+    name "mirror",
+    description [;
+      <<Examine player>>;
+    ],
+    before [;
+     Search: <<Examine player>>;
+    ],
+  has static concealed;
+
+Room CottageKitchen "Kitchen"
+  with
+    name "stove",        
+    description "This is the kitchen. It's rather spartan if you compare \
+      it with your home back in Canberra, but you're not really \
+      complaining. There is a simple stove and a sink. Tiles with \
+      red and blue flowers on them cover the wall between the sink and the \
+      cupboard above it. A door leads southeast into the living room.",
+    singledest 'kitchen',
+    se_to CottageKitchenDoor,
+  has light;
+
+SceneryContainer -> KitchenCupboard "cupboard"
+  with
+    name "cupboard",
+    description [;
+      print "The cupboard goes all the way to the ceiling.";
+      self.write_contents(false, " It contains ", " It is empty");
+      print "^";
+    ],
+  has openable;
+
+Object -> -> KitchenStuff "utensils"
+  with
+    name "plates" "plate" "glass" "glasses" "cutlery" "knife" "fork" "spoon"
+      "knives" "forks" "spoons" "things" "cooking" "utensils" "utensil",
+    article "some",
+    description "There are all the plates, glasses and other things you \
+      need to cook and eat.",
+    before [;
+    Take, Remove:
+      "You are not feeling hungry nor thirsty. You decide to leave them \
+      in their proper place.";
+    ],
+  has pluralname;
+
+Sink -> CottageSink "sink"
+  with
+    description [;
+      print "There's plenty of room in it for cooking equipment and \
+      all other things that tend to end up in the kitchen.";
+      self.write_contents(false, " It contains ", " It is empty");
+      print "^";
+    ];
+
+Tap -> CottageTap "tap"
+  with
+    name "perfectly" "normal",
+    description "It's a perfectly normal tap, conveniently placed above the \
+      sink.";
+
+Object -> Tile "tiles"
+  with
+      name "tiles" "blue" "red" "and" "flowers",
+    description [;
+      print "Every other tile has a big blue flower on it, and the rest \
+        a red one. You can't figure out what you were thinking when you \
+        picked them.";
+      if (LooseTile hasnt general)
+        " One of the blue tiles looks a bit loose!";
+      new_line;
+    ],
+  has static concealed scenery;
+    
+Object -> LooseTile "tile"
+  with
+      name "blue" "loose" "tile" "flower",
+    parse_name [; return NastyName(self,1); ],
+    before [;
+    Take, Turn, Push, Pull, Examine, Search:
+      give self general;
+      "No, you were mistaken. It's firmly attached to the wall. It just \
+      looked a bit loose.";
+    ],
+  has static concealed scenery;
+      
+AutoDoor CottageBedroomDoor "bedroom door"
+  with
+    name "bedroom",
+    found_in CottageBedroom CottageLivingroom;
+
+
+AutoDoor CottageKitchenDoor "kitchen door"
+  with
+    name "kitchen",
+    found_in CottageKitchen CottageLivingroom;
+
+AutoDoor CottageFrontDoor "front door"
+  with
+    name "front",
+    found_in Driveway CottageLivingroom;
+
+!################ Intro end

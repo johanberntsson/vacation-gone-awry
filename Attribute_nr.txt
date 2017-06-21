@@ -1,0 +1,28 @@
+ 0 Attribute animate;
+ 1 Attribute clothing;
+ 2 Attribute concealed;
+ 3 Attribute container;
+ 4 Attribute door;
+ 5 Attribute edible;
+ 6 Attribute enterable;
+ 7 Attribute female;
+ 8 Attribute general;
+ 9 Attribute light;
+10 Attribute lockable;
+11 Attribute locked;
+12 Attribute moved;
+13 Attribute on;
+14 Attribute open;
+15 Attribute openable;
+16 Attribute proper;
+17 Attribute scenery;
+18 Attribute scored;
+19 Attribute static;
+20 Attribute supporter;
+21 Attribute switchable;
+22 Attribute talkable;
+23 Attribute transparent;
+24 Attribute visited;
+25 Attribute workflag;
+26 Attribute worn;
+27 Attribute absent alias female;      !  Please, no psychoanalysis

@@ -1,0 +1,848 @@
+! Included after 'Include "Grammar";'
+
+[ HasLightSource i j ad;
+   if (i==0) rfalse;
+   if (i has light) rtrue;
+   if (i has enterable || IsSeeThrough(i)==1)
+   {   objectloop (j in i)
+           if (HasLightSource(j)==1) rtrue;
+   }
+   ad = i.&add_to_scope;
+   if (parent(i)~=0 && ad ~= 0)
+   {   if (UnsignedCompare(ad-->0, top_object)>0)
+       {   ats_hls = 0; ats_flag = 1;
+           RunRoutines(i, add_to_scope);
+           ats_flag = 0; if (ats_hls == 1) rtrue;
+       }
+       else
+       {   for (j=0:(2*j)<i.#add_to_scope:j++)
+               if (HasLightSource(ad-->j)==1) rtrue;
+       }
+   }
+   rfalse;
+];
+
+
+[ PrintRank;
+  print ", which makes you a";
+  if(score==100)" public hero and front page news!";
+  if(score>=80) " trusted promoter of intergalactic friendship.";
+  if(score>=60) " daring adventurer.";
+  if(score>=40) "n explorer.";
+  if(score>=30) " researcher.";
+  if(score>=15) " man with a mission.";
+  if(score>=5) " concerned citizen.";
+  " first time player.";
+];
+
+[ ScoreSub i;
+  L__M(##Score);
+  PrintRank();
+  
+  i=children(TrophyCase);
+  if(i>0 && deadflag==0)
+    print "^In addition to this you have ", i*20, " treasure points.^";
+];
+
+
+[ BeforeParsing i j tokenise_needed;
+   for(tokenise_needed=false, i=0: i<buffer->1: i++) {
+     ! Check for, and remove, question marks, double-quotes and exclamation
+     ! marks. This is done to make questions and speech work better.
+     if(buffer->(i+2)=='?' or '"' or '!') {
+       tokenise_needed=true;
+       if(buffer->(i+2)=='!') buffer->(i+2)='.'; else buffer->(i+2)=' ';
+     }
+
+     ! We will also check for, and remove, multiple period characters.
+     if(buffer->(i+2)=='.') {
+       for(j=i-1: j>=0 && buffer->(j+2)==' ': j--);
+       if(j>=0 && buffer->(j+2)=='.') {
+         tokenise_needed=true;
+         buffer->(j+2)=' ';
+       }
+     }
+
+     ! change "Dr." to "dr"
+     if(i>=2 && buffer->(i+2)=='.') {
+       if(buffer->(i)=='d' or 'D' && buffer->(i+1)=='r' or 'R') {
+         tokenise_needed=true;
+         buffer->(i+2)=' ';
+       }
+     }
+   }
+
+   if(tokenise_needed) @tokenise buffer parse;
+];
+
+Attribute huge;
+Attribute weird;
+
+#IFDEF OWN_VERSION;
+Attribute pluralname;
+Constant ISAREONFIRST_BIT = 8192; ! Set if is/are should be decided on basis of first object only
+
+! WriteListR changed to recognize pluralname
+[ WriteListR o depth stack_pointer  classes_p sizes_p i j k k2 l m n q senc mr;
+
+  if (depth>0 && o==child(parent(o)))
+  {   SortOutList(o); o=child(parent(o)); }
+
+  classes_p = match_classes + stack_pointer;
+  sizes_p   = match_list + stack_pointer;
+
+  for (i=o,j=0:i~=0 && (j+stack_pointer)<128:i=NextEntry(i,depth),j++)
+  {   classes_p->j=0;
+      if (i.plural~=0) k++;
+  }
+
+! start of change
+!  if (c_style & ISARE_BIT ~= 0)
+!  {   if (j==1) print " is"; else print " are";
+!      if (c_style & NEWLINE_BIT ~= 0) print ":^"; else print (char) ' ';
+!      c_style = c_style - ISARE_BIT;
+  if (c_style & (ISARE_BIT | ISAREONFIRST_BIT) ~= 0)
+  {   if ((j==1 || (c_style & ISAREONFIRST_BIT)) && o hasnt pluralname) print " is"; else print " are";
+      if (c_style & NEWLINE_BIT ~= 0) print ":^"; else print (char) ' ';
+      c_style = c_style - (c_style & (ISARE_BIT + ISAREONFIRST_BIT));
+! end of change
+  }
+
+  stack_pointer = stack_pointer+j+1;
+
+  if (k<2) jump EconomyVersion;   ! It takes two to plural
+
+  n=1;
+  for (i=o,k=0:k<j:i=NextEntry(i,depth),k++)
+      if (classes_p->k==0)
+      {   classes_p->k=n; sizes_p->n=1;
+          for (l=NextEntry(i,depth), m=k+1:l~=0 && m<j:
+               l=NextEntry(l,depth), m++)
+              if (classes_p->m==0 && i.plural~=0 && l.plural~=0)
+              {   if (ListEqual(i,l)==1)
+                  {   sizes_p->n = sizes_p->n + 1;
+                      classes_p->m = n;
+                  }
+              }
+          n++;
+      }
+  n--;
+
+  for (i=1, j=o, k=0: i<=n: i++, senc++)
+  {   while (((classes_p->k) ~= i)
+             && ((classes_p->k) ~= -i)) { k++; j=NextEntry(j,depth); }
+      m=sizes_p->i;
+      if (j.list_together~=0 or lt_value
+          && ZRegion(j.list_together)==2 or 3
+          && j.list_together==mr) senc--;
+      mr=j.list_together;
+  }
+  senc--;
+  for (i=1, j=o, k=0, mr=0: senc>=0: i++, senc--)
+  {   while (((classes_p->k) ~= i)
+             && ((classes_p->k) ~= -i)) { k++; j=NextEntry(j,depth); }
+      if (j.list_together~=0 or lt_value)
+      {   if (j.list_together==mr) { senc++; jump Omit_FL2; }
+          k2=NextEntry(j,depth);
+          if (k2==0 || k2.list_together~=j.list_together) jump Omit_WL2;
+          k2=ZRegion(j.list_together);
+          if (k2==2 or 3)
+          {   q=j; listing_size=1; l=k; m=i;
+              while (m<n && q.list_together==j.list_together)
+              {   m++;
+                  while (((classes_p->l) ~= m)
+                         && ((classes_p->l) ~= -m))
+                  {   l++; q=NextEntry(q,depth); }
+                  if (q.list_together==j.list_together) listing_size++;
+              }
+!              print " [", listing_size, "] ";
+              if (listing_size==1) jump Omit_WL2;
+              if (c_style & INDENT_BIT ~= 0) spaces 2*(depth+wlf_indent);
+              if (k2==3)
+              {   q=0; for (l=0:l<listing_size:l++) q=q+sizes_p->(l+i);
+                  EnglishNumber(q); print " ";
+                  print (string) j.list_together;
+                  if (c_style & ENGLISH_BIT ~= 0) print " (";
+                  if (c_style & INDENT_BIT ~= 0) print ":^";
+              }
+              q=c_style;
+              if (k2~=3)
+              {   inventory_stage=1;
+                  parser_one=j; parser_two=depth+wlf_indent;
+                  if (RunRoutines(j,list_together)==1) jump Omit__Sublist2;
+              }
+              lt_value=j.list_together; listing_together=j; wlf_indent++;
+              WriteListR(j,depth,stack_pointer); wlf_indent--;
+              lt_value=0; listing_together=0;
+              if (k2==3)
+              {   if (q & ENGLISH_BIT ~= 0) print ")";
+              }
+              else
+              {   inventory_stage=2;
+                  parser_one=j; parser_two=depth+wlf_indent;
+                  RunRoutines(j,list_together);
+              }
+             .Omit__Sublist2;
+              if (q & NEWLINE_BIT ~= 0 && c_style & NEWLINE_BIT == 0) new_line;
+              c_style=q;
+              mr=j.list_together;
+              jump Omit_EL2;
+          }
+      }
+
+     .Omit_WL2;
+      if (WriteBeforeEntry(j,depth)==1) jump Omit_FL2;
+      if (sizes_p->i == 1)
+      {   if (c_style & NOARTICLE_BIT ~= 0) PrintShortName(j);
+          else
+          {   if (c_style & DEFART_BIT ~= 0) DefArt(j); else InDefArt(j);
+          }
+      }
+      else
+      {   if (c_style & DEFART_BIT ~= 0) print "the ";
+          EnglishNumber(sizes_p->i); print " ";
+          PrintOrRun(j,plural,1);
+      }
+      WriteAfterEntry(j,depth,stack_pointer);
+
+     .Omit_EL2;
+      if (c_style & ENGLISH_BIT ~= 0)
+      {   if (senc==1) print " and ";
+          if (senc>1) print ", ";
+      }
+     .Omit_FL2;
+  }
+  rtrue;
+
+  .EconomyVersion;
+
+  n=j;
+
+  for (i=1, j=o: i<=n: j=NextEntry(j,depth), i++, senc++)
+  {   if (j.list_together~=0 or lt_value
+          && ZRegion(j.list_together)==2 or 3
+          && j.list_together==mr) senc--;
+      mr=j.list_together;
+  }
+
+  for (i=1, j=o, mr=0: i<=senc: j=NextEntry(j,depth), i++)
+  {   if (j.list_together~=0 or lt_value)
+      {   if (j.list_together==mr) { i--; jump Omit_FL; }
+          k=NextEntry(j,depth);
+          if (k==0 || k.list_together~=j.list_together) jump Omit_WL;
+          k=ZRegion(j.list_together);
+          if (k==2 or 3)
+          {   if (c_style & INDENT_BIT ~= 0) spaces 2*(depth+wlf_indent);
+              if (k==3)
+              {   q=j; l=0;
+                  do
+                  {   q=NextEntry(q,depth); l++;
+                  } until (q.list_together~=j.list_together);
+                  EnglishNumber(l); print " ";
+                  print (string) j.list_together;
+                  if (c_style & ENGLISH_BIT ~= 0) print " (";
+                  if (c_style & INDENT_BIT ~= 0) print ":^";
+              }
+              q=c_style;
+              if (k~=3)
+              {   inventory_stage=1;
+                  parser_one=j; parser_two=depth+wlf_indent;
+                  if (RunRoutines(j,list_together)==1) jump Omit__Sublist;
+              }
+              lt_value=j.list_together; listing_together=j; wlf_indent++;
+              WriteListR(j,depth,stack_pointer); wlf_indent--;
+              lt_value=0; listing_together=0;
+              if (k==3)
+              {   if (q & ENGLISH_BIT ~= 0) print ")";
+              }
+              else
+              {   inventory_stage=2;
+                  parser_one=j; parser_two=depth+wlf_indent;
+                  RunRoutines(j,list_together);
+              }
+             .Omit__Sublist;
+              if (q & NEWLINE_BIT ~= 0 && c_style & NEWLINE_BIT == 0) new_line;
+              c_style=q;
+              mr=j.list_together;
+              jump Omit_EL;
+          }
+      }
+     .Omit_WL;
+      if (WriteBeforeEntry(j,depth)==1) jump Omit_FL;
+      if (c_style & NOARTICLE_BIT ~= 0) PrintShortName(j);
+      else
+      {   if (c_style & DEFART_BIT ~= 0) DefArt(j); else InDefArt(j);
+      }
+      WriteAfterEntry(j,depth,stack_pointer);
+
+     .Omit_EL;
+      if (c_style & ENGLISH_BIT ~= 0)
+      {   if (i==senc-1) print " and ";
+          if (i<senc-1) print ", ";
+      }
+     .Omit_FL;
+  }
+];
+
+[ SearchScope domain1 domain2 context i;
+  ! ### Modified to work correctly inside possibly nested and possibly
+  ! ### closed containers. Provides 'Look-scope', not 'Touch-scope'
+
+  ! print "^Scopecheck: ", (The) domain2, " in ", (the) domain1, ".^";
+
+  i=0;
+!  Everything is in scope to the debugging commands
+
+#ifdef DEBUG;
+  if (scope_reason==PARSING_REASON
+      && (verb_word == 'purloin' or 'tree' or 'abstract'
+          || verb_word == 'gonear' or 'scope'))
+  {   for (i=selfobj+1:i<=top_object:i++) PlaceInScope(i);
+      rtrue;
+  }
+#endif;
+
+!  First, a scope token gets priority here:
+
+  if (scope_token ~= 0)
+  {   scope_stage=2;
+      if (indirect(scope_token)~=0) rtrue;
+  }
+
+!  Next, call any user-supplied routine adding things to the scope,
+!  which may circumvent the usual routines altogether if they return true:
+
+  if (actor==domain1 or domain2 && InScope(actor)~=0) rtrue;
+
+! ### My code
+
+  if(domain2~=0 && (domain2 notin domain1)) {
+    i=parent(domain2);
+    while(i~=0 && parent(i)~=0 &&
+          ((i has supporter) ||
+           ((i has container) &&
+            (i has open)) ||
+           (i has transparent)))
+      i=parent(i);
+    if(i~=0 && i~=domain1) {
+      ScopeWithin(compass);
+      domain1=i;
+    }
+    if(parent(domain1))
+      PlaceInScope(domain1);
+  }
+! ### End of my code
+
+!  Pick up everything in the location except the actor's possessions;
+!  then go through those.  (This ensures the actor's possessions are in
+!  scope even in Darkness.)
+
+  if (context==5 && advance_warning ~= -1)
+  {
+    if (IsSeeThrough(advance_warning)==1) 
+    {
+      ScopeWithin(advance_warning, 0, context);
+    }
+  }
+  else
+  {
+    ScopeWithin(domain1, domain2, context);
+    ScopeWithin(domain2,0,context);
+  }
+];
+
+[ TestScope obj act a al sr x y;
+  x=parser_one; y=parser_two;
+  parser_one=obj; parser_two=0; a=actor; al=actors_location;
+  sr=scope_reason; scope_reason=TESTSCOPE_REASON;
+  if (act==0) actor=player; else actor=act;
+  actors_location=actor;
+  while (parent(actors_location)~=0)
+      actors_location=parent(actors_location);
+
+  ! ### (Was the next line simply a bug?)
+  SearchScope(actors_location,actor,0); scope_reason=sr; actor=a;
+
+  actors_location=al; parser_one=x; x=parser_two; parser_two=y;
+  return x;
+];
+
+[ ScopeWithin_O domain nosearch context i ad n;
+
+!  If the scope reason is unusual, don't parse.
+
+      if (scope_reason~=PARSING_REASON or TALKING_REASON)
+      {   DoScopeAction(domain); jump DontAccept; }
+
+!  If we're beyond the end of the user's typing, accept everything
+!  (NounDomain will sort things out)
+
+      if (match_from > num_words)
+      {   i=parser_trace; parser_trace=0;
+#ifdef DEBUG;
+          if (i>=5) { print "     Out of text: matching "; DefArt(domain);
+                      new_line; }
+#endif;
+          MakeMatch(domain,1);
+          parser_trace=i; jump DontAccept;
+      }
+
+!  "it" or "them" matches to the it-object only.  (Note that (1) this means
+!  that "it" will only be understood if the object in question is still
+!  in context, and (2) only one match can ever be made in this case.)
+
+      wn=match_from;
+      i=NounWord();
+      if (i==1 && itobj==domain)   MakeMatch(itobj,1);
+      if (i==2 && himobj==domain)  MakeMatch(himobj,1);
+      if (i==3 && herobj==domain)  MakeMatch(herobj,1);
+      if (i==4 && player==domain)  MakeMatch(player,1);
+
+!  Construing the current word as the start of a noun, can it refer to the
+!  object?
+
+      wn--; TryGivenObject(domain);
+
+      .DontAccept;
+
+!  Shall we consider the possessions of the current object, as well?
+!  Only if it's a container (so, for instance, if a dwarf carries a
+!  sword, then "drop sword" will not be accepted, but "dwarf, drop sword"
+!  will).
+!  Also, only if there are such possessions.
+!
+!  Notice that the parser can see "into" anything flagged as
+!  transparent - such as a dwarf whose sword you can get at.
+
+      if (child(domain)~=0 && domain ~= nosearch &&
+  (IsSeeThrough(domain)==1 && (actor==player || domain~=player)))
+          ScopeWithin(domain,0,context);
+
+!  Drag any extras into context
+
+   ad = domain.&add_to_scope;
+   if (ad ~= 0)
+   {   if (UnsignedCompare(ad-->0,top_object) > 0)
+       {   ats_flag = 2+context;
+           RunRoutines(domain, add_to_scope);
+           ats_flag = 0;
+       }
+       else
+       {   n=domain.#add_to_scope;
+           for (i=0:(2*i)<n:i++)
+               ScopeWithin_O(ad-->i,0,context);
+       }
+   }
+];
+
+
+[ RTakeSub fromobj i j k postonobj;
+
+  ! ### Modified to work correctly inside possibly nested and possibly
+  ! ### closed containers.
+
+  
+  if (noun==player) return L__M(##Take,2);
+
+  if (noun has animate) return L__M(##Take,3,noun);
+
+  if (parent(player)==noun) return L__M(##Take,4,noun);
+
+  i=parent(noun);
+  if (i==player) return L__M(##Take,5);
+
+  if (i has container || i has supporter)
+  {   postonobj=i;
+      k=action; action=##LetGo;
+      if (RunRoutines(i,before)~=0) { action=k; rtrue; }
+      action=k;
+  }
+
+! ### My code to calculate things needed later
+  
+  ! ### Calculate 'Super-parent' of actor.
+  j=actor;
+  while(((j=parent(j)) has container && j has open)||
+        (j has supporter)||
+        (j has animate && j has transparent));
+  
+  ! ### Calculate 'Super-parent' of noun.
+  k=noun;
+  while(((k=parent(k)) has container && k has open)||
+        (k has supporter)||
+        (k has animate && k has transparent));
+
+! ### End of my code
+
+  
+  while (i~=fromobj && i~=0)
+  {   if (i hasnt container && i hasnt supporter)
+      {   if (i has animate) return L__M(##Take,6,i);
+          if (i has transparent) return L__M(##Take,7,i);
+          return L__M(##Take,8);
+      }
+
+! ### My code, saying that if it is in a closed container, the actor
+! ### can still take it _iff_ he is in the same closed container.
+
+      if (i has container && i hasnt open && i~=j)
+          return L__M(##Take,9,i);
+
+! ### End of my code
+
+      i=parent(i);
+      if (i==player) i=fromobj;
+  }
+
+
+! ### My code, stopping the case that the object is free, but the actor
+! ### is in a closed container. That container must be transparent, or
+! ### we would never get here.
+
+  if(k~=j && parent(j)>0 && parent(k)==0)
+    return L__M(##Take,4,j);
+
+! ### End of my code
+
+  
+  if (noun has scenery) return L__M(##Take,10);
+  if (noun has static)  return L__M(##Take,11);
+
+  k=0; objectloop (j in player) if (j hasnt worn) k++;
+
+  if (k >= ValueOrRun(player,capacity))
+  {   if (SACK_OBJECT~=0)
+      {   if (parent(SACK_OBJECT)~=player)
+              return L__M(##Take,12);
+          j=0;
+          objectloop (k in player) 
+! ### replaced code
+! ### old     if (k~=SACK_OBJECT && k hasnt worn && k hasnt light) j=k;
+              if (k~=SACK_OBJECT && k hasnt worn && k hasnt light && k hasnt huge) j=k;
+! ### End of replaced code
+
+          if (j~=0)
+          {   L__M(##Take,13,j);
+              keep_silent = 1; <Insert j SACK_OBJECT>; keep_silent = 0;
+              if (j notin SACK_OBJECT) rtrue;
+          }
+          else return L__M(##Take,12);
+      }
+      else return L__M(##Take,12);
+  }
+  move noun to player;
+
+  if (postonobj~=0)
+  {   k=action; action=##LetGo;
+      if (RunRoutines(postonobj,after)~=0) { action=k; rtrue; }
+      action=k;
+  }
+  rfalse;
+];
+
+[ LookSub allow_abbrev  i descin j;
+
+  ! ### Modified to work correctly inside possibly nested and possibly
+  ! ### closed containers. _May_ not work correctly in darkness yet.
+  
+  if (parent(player)==0) return RunTimeError(10);
+
+! ### Changed code
+  
+  if(location==thedark)
+    j=location;
+  else
+    j=parent(player);
+  if(player notin location && location~=thedark) {
+    while(parent(j)~=0 &&
+          ((j hasnt container) ||
+           (j has open) ||
+           (j has transparent)))
+      j=parent(j);
+  }
+
+  if(j==location && location~=thedark)
+    NoteArrival();
+  new_line;
+  
+if(j~=location) print"(";
+#IFV5; style bold; #ENDIF;
+  if(j==location)
+    PrintShortName(location);
+  else
+    print "In ", (the) j;
+#IFV5; style roman; #ENDIF;
+
+  i=parent(player);
+  if (location~=thedark && i~=j)
+  {   if (i has supporter) { print " ("; L__M(##Look,1); print " "; }
+      else { print " ("; L__M(##Look,2); print " "; }
+      DefArt(i); print ")"; descin=i;
+  }
+
+  if (print_player_flag==1) { print " ("; L__M(##Look,3);
+      print " "; @print_obj player; print ")"; }
+
+if(j~=location) print")";
+
+  new_line;
+
+  if (lookmode<3)
+  {   if ((allow_abbrev~=1) || (lookmode==2) ||
+          (j hasnt visited) || (parent(j)~=0)) ! Last one covers for nonrooms
+      {   if (j.describe~=NULL) RunRoutines(j,describe);
+          else
+          {   if (j.description==0) RunTimeError(11,j);
+              else PrintOrRun(j,description);
+          }
+      }
+  }
+
+  if(j==location) {
+    if(descin~=location)
+      Locale(location);
+    if(descin~=0) Locale(descin);
+  }
+  else {
+    if(descin~=j)
+      Locale(j);
+    if(descin~=0) Locale(descin);
+  }
+
+! ### End of changed code
+
+  LookRoutine();
+  if(j==location && location~=thedark)
+    ScoreArrival();
+
+  action=##Look;
+  if (AfterRoutines()==1) rtrue;
+];
+
+[ OpenSub j;
+
+  ! ### Modified not to say (revealing ...) when opening container from inside
+
+  if (noun hasnt openable) return L__M(##Open,1);
+  if (noun has locked)     return L__M(##Open,2);
+  if (noun has open)       return L__M(##Open,3);
+  give noun open;
+  if (AfterRoutines()==1) rtrue;
+  if (keep_silent==1) rtrue;
+  j=parent(player);
+  while(j~=noun && j>0)
+    j=parent(j);
+  if (noun has container && noun hasnt transparent
+      && child(noun)~=0 && j~=noun)
+      return L__M(##Open,4,noun);
+  L__M(##Open,5,noun);
+];
+
+#ENDIF;
+
+[ InsertSub;
+  receive_action = ##Insert;
+  if (second==d_obj ) <<Drop noun>>;
+  if (parent(noun)~=player) return L__M(##Insert,1);
+
+  if (second>1) {
+    action=##Receive;
+    if (RunRoutines(second,before)~=0) { action=##Insert; rtrue; }
+    action=##Insert;
+  }
+  if (second hasnt container) return L__M(##Insert,2);
+  if (second hasnt open)      return L__M(##Insert,3);
+  if (IndirectlyContains(noun,second)==1) return L__M(##Insert,5);
+  if (noun has worn)
+  {   L__M(##Insert,6);
+      <Disrobe noun>; if (noun has worn) rtrue;
+  }
+
+  ! ### My code
+  if(noun has huge)
+    "No matter how you struggle, you can't get ",(the) noun,
+      " into ", (the) second,".";
+  ! ### End
+  
+  if (children(second)>=ValueOrRun(second,capacity))
+      return L__M(##Insert,7,second);
+
+  move noun to second;
+
+  if (AfterRoutines()==1) rtrue;
+
+  if (second>1)
+  {   action=##Receive;
+      if (RunRoutines(second,after)~=0) { action=##Insert; rtrue; }
+      action=##Insert;
+  }
+  if (keep_silent==1) rtrue;
+  if (multiflag==1) return L__M(##Insert,8);
+  L__M(##Insert,9,noun);
+];
+
+[ ChooseObjects obj code   x;
+  if(code<2) {
+    if(action_to_be==##Take or ##Remove) {
+      if(obj has door or animate or static or concealed or scenery)
+              return 2;
+      return 1;
+    }
+    else { ! ##Insert, ##PutOn, ##Drop
+      if(obj in player) {
+         if(obj has worn)
+                return 2;
+        return 1;
+      }
+      else
+        return 2;
+        
+    }
+  }
+  else {
+    if(action_to_be==##Take) {
+      return 4-(obj in player);
+    }
+    if(action_to_be==##Burn) {
+!      print "Checking obj#", obj, "^";
+      x=2+2*(obj in player);
+      if(obj ofclass Burnable && obj.burning)
+        x--;
+      return x;
+    }
+    if(action_to_be==##Extinguish) {
+!      print "Extinguish, Checking obj#", obj, "^";
+      x=4;
+      if(obj ofclass Burnable) {
+        x=6;
+        if(obj.burning)
+          x=x+3;
+      }
+!      print x;
+      return x;
+    }
+    if(action_to_be==##Smoke) {
+!      print "Checking obj#", obj, "^";
+      if(obj ofclass Cigarette && obj.burning)
+        return 4;
+      else
+        return 2;
+    }
+    if(obj==ElevatorDoor)
+      return 4;
+!    if(obj==Cabin)
+!      return 6;
+    else if(obj>=20) {
+      if(obj has scenery)
+        return 4; ! Doesn't work properly - why?
+      return 8;
+    }
+    else if(obj>=ne_obj && obj<=sw_obj) {
+!      print"Odd wall!^";
+      return 0;
+    }
+    else {
+!      print "Good wall!^";
+      return 2;
+    }
+  }
+];
+
+[ Cchar x;
+  if(x>='a' && x<='z')
+    print (char) (x-32);
+  else
+    print (char) x;
+];
+
+[ superparent obj x;
+  x=obj;
+  while(parent(x)>0)
+    x=parent(x);
+  return x;
+];
+
+[ NestedIn obj outer   x;
+  x=parent(obj);
+  while(x>0 && x~=outer)
+    x=parent(x);  
+  if(x==outer)
+    rtrue;
+  rfalse;
+];
+
+[ NastyName obj n    i parsed m total nasty other;
+
+  ! Called by obj.parse_name. Looks through the objects name-list and accepts
+  ! any combination of all but the first n words, possibly together with one
+  ! or more of the first n words. n defaults to 1
+  
+  ! Example:
+  ! Object "cigarette lighter"
+  !   with name "cigarette" "lighter",
+  !     parse_name [; return NastyName(self); ];
+  ! This object can be called "cigarette lighter", "lighter cigarette" or
+  ! "lighter", but not just "cigarette".
+
+  if(n--<1) n=0;
+  total=obj.#name/2;
+
+  while((m=NextWordStopped())~=-1) {
+    for(i=total-1:i>=0:i--) {
+      if(m==obj.&name-->i) {
+        if(i>n)
+          other=true;
+        else
+          nasty=true;
+        parsed++;
+        break;
+      }
+    }
+    if(i<0) break;
+  }
+  
+  if(nasty==true && other==false)
+    return 0;
+  return parsed;
+];
+
+object tw_waiting "tw";
+
+[ do_nothing how_long i;
+
+! Routine to walk the player during a "GO TO"-command,
+  
+  give tw_waiting ~on;
+  if (how_long==0)
+    rfalse;
+
+  give tw_waiting ~on;
+  for (i=how_long: (i>1) && (deadflag==0) && (tw_waiting hasnt on): i--)
+    {
+    if(player.followpath) player.walk();
+ #ifdef EndTurnSequence;
+    EndTurnSequence();
+ #ifnot;
+    Message fatalerror "timewait.h requires \
+                        InformLibrary.End_Turn_Sequence() or \
+                        EndTurnSequence() to be defined (this should be done \
+                        by the Inform Library)";
+ #endif;
+
+    DisplayStatus();
+    #IFV5;
+    DrawStatusLine();
+    #ENDIF;
+    }
+  if ((tw_waiting has on) && (i>1) && (deadflag==0))
+    {
+    #IFDEF DEBUG;
+    if(PathInfo)
+      print "^DEBUG: (waiting stopped)^";
+    #ENDIF;
+    meta= 1;
+    }
+];
+
+
+

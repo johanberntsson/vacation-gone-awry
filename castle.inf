@@ -1,0 +1,1412 @@
+!################# Castle Area Start
+
+Room BeforeCastle "Before Castle"
+  with
+    description "You are standing before a ruined castle. Actually not \
+      very much of it remains, most walls have been demolished and it \
+      looks as if someone has been playing with matches. You guess that \
+      the castle was in better shape before the war. The castle entrance \
+      (or what's left of it) is to the north. To the south you reenter the \
+      much more cheerful track leading back to the centre.",
+    before [;
+      Go:
+        if(noun==n_obj && WarningSign hasnt general) {
+          if(self hasnt general) {
+            give self general;
+            "Maybe you should read the sign first.";
+          } else {
+            self.before=$ffff;
+            print "Tough guys don't read signs, right?^";
+          }
+        }
+    ],
+    s_to NarrowTrack, n_to CastleEntrance,
+    cant_go_msg
+      "The snow is too deep in that direction. You can go \
+      north to the castle or south to return to the centre.",
+  has light;
+
+Object -> WarningSign "sign-post"
+  with
+    name "sign" "signs" "sign-post" "post",
+    initial "There is a sign-post next to the entrance.",
+    description [;
+      give self general;
+      "There are two signs posted on the sign-post. One is written \
+      in both German and English. The faded letters read \
+      ~DANGER. Live Ammunition. Keep Out.~ and is signed by
+      ~Neudorf City Hall~.^^The sign below looks much newer and reads \
+      ~Entrance Strictly Forbidden for Unauthorized Personnel~. It has \
+      been signed by ~R. Williams, Research Manager~.";
+    ],
+  has static;
+
+Object -> DummyCastle "castle"
+  with
+    found_in BeforeCastle CastleEntrance,
+    name "castle" "ruined" "walls" "entrance" "stronghold" "moat",
+    description
+      "The once impressive stronghold is now but a ruin. Only parts of the \
+      western wing remain, while the central and east parts have collapsed \
+      completely. The castle is surrounded by a moat, which is now dry and \
+      filled with debris.",
+  has scenery;
+ 
+Room CastleEntrance "Castle Entrance"
+  with
+    description "You are on a bridge which spans over a moat. In front of \
+      you there are some passages leading off. It looks like the main part \
+      of the stronghold was to the east, but unfortunately the entrance \
+      to that part has been demolished. The passages to the northeast and \
+      northwest, on the other hand, look passable. You could also follow \
+      the path to the south down to the centre again.",
+    singledest 'castle',
+    doubledest 'castle' 'entrance',
+    e_to "Only rubbles remain of the castle in that direction.",
+    d_to "The moat is dry and almost filled with debris. You can't enter it.",
+    s_to BeforeCastle, ne_to Hallway1, nw_to Hallway2,
+    cant_go_msg "A scorched wall blocks your path.",
+  has light;
+
+Room Hallway1 "Hallway"
+  with
+    description "All windows are long since broken, and the chilly breeze \
+    makes this hallway an unpleasant place to stay. You can \
+    escape the cold through main exits to the north and southwest. \
+    There is also a smaller doorway leading west from here.",
+    s_to "The only way south is through the windows.",
+    sw_to CastleEntrance, n_to Staircase1, w_to StoneRoom,
+    cant_go_msg "A scorched wall blocks your path.",
+  has light;
+
+Object -> CastleWindows "broken windows"
+  with
+    name "broken" "windows" "window",
+    description "From the windows you have a beautiful view of the \
+                snow-covered mountains.",
+    before [;
+    ThrownAt:
+      move noun to CastleEntrance;
+      print_ret (The) noun, " disappears through a broken window, \
+                and lands with a thud on the other side.";
+    ],
+  has scenery;
+
+Room Staircase1 "Staircase"
+  with
+    description "You are standing at the bottom of a staircase, which \
+      winds upwards into darkness. There is a hallway south of here.",
+    u_to CastleStaircase,
+    s_to Hallway1,
+    cant_go_msg "A scorched wall blocks your path.",
+  has light;
+
+Room Staircase2 "Staircase"
+  with
+    description "This is the top of a stone staircase, \
+      which leads down to the bottom floor of the castle. There is an \
+      exit to the southwest.",
+    d_to CastleStaircase,
+    sw_to UpperHall,
+    cant_go_msg "A scorched wall blocks your path.",
+  has light;
+
+AutoDoor CastleStaircase "staircase"
+  with
+    name "staircase" "stone",
+    found_in StairCase1 StairCase2,
+    description "Many steps are broken and there is lots of debris on it, \
+                but the staircase seems safe enough to use.",
+    door_to [loc quiet;
+      if(loc==0)
+        loc=location;
+      if(quiet==false && random(5)==1)
+        print "In the darkness you slip on a broken stair-step, \
+          but escape unhurt.^";
+      if(loc==StairCase1)
+        return StairCase2;
+      return StairCase1;
+    ],
+  has ~openable open;
+
+Room UpperHall "Upper Hall"
+  with
+    description "This room is a surprisingly well preserved hall. The \
+      only thing showing darker eras, is a line of machine \
+      gun holes, which stretches over the northern wall. There are \
+      doorways leading off to the northeast and west from here.",
+    doubledest 'upper' 'hall',
+    ne_to Staircase2, w_to StorageRoom,
+    cant_go_msg "A scorched wall blocks your path.",
+  has light;
+
+Object -> GunHoles "machine gun holes"
+  with
+    article "some",
+    name "machine" "gun" "hole" "holes" "bullet",
+    description "A grim reminder of the war, no doubt.",
+  has scenery pluralname;
+
+Room StorageRoom "Storage Room"
+  with
+    name "plastic",
+    description [;
+      print "This room must have served as a \
+      storage earlier. It doesn't seem like any fire has ever \
+      ravaged here, as the furniture isn't damaged. It consists of a \
+      large oak cupboard, so deeply recessed into the northern wall \
+      that only the front is visible. And a huge and beautiful front \
+      it is. Also, there are some shelves mounted on one wall. The \
+      only exit is through a doorway to the east";
+      if(WoodenLadder in CastleShelves)
+        print ". A ladder is raised against the shelves";
+      ".";
+    ],
+    doubledest 'storage' 'room',
+    before [;
+     Go:
+      if(noun==n_to)
+        if(SecretCupboard has open) {
+          if(CupboardWall has open)
+            PlayerTo(SecretRoom,2);
+          else {
+            if(player notin SecretCupboard)
+              PlayerTo(SecretCupboard,2); ! Should be SecretCupboard
+            else
+              return 0;
+          }
+          return 3;
+        }
+      if(noun==d_to && player in WoodenLadder)
+        <<Exit>>;
+      if(noun==u_to && WoodenLadder in CastleShelves &&
+         player notin WoodenLadder)
+        <<Climb WoodenLadder>>;
+     Climb:
+      if(noun==d_obj or u_obj)
+        <<Go noun>>;
+     Exit:
+      if(IronKettle in CastleShelves)
+        remove IronKettle;
+      rfalse;
+    Drop: if(player in WoodenLadder) <<PutOn noun WoodenLadder>>;
+    ],
+    e_to UpperHall,
+    cant_go_msg "A scorched wall blocks your path.",
+  has light;
+
+Object -> CupboardDoor "pair of cupboard doors"
+  with
+    name "oak" "cupboard" "door" "doors" "pair" "of" "fine",
+    parse_name [; return NastyName(self,2); ],
+    description [;
+      if(SecretCupboard hasnt open)
+        print "The doors are all made of fine oak, except for \
+          the iron hinges. All in all, an excellent piece of work. \
+          They are closed.^";
+      else
+        print "The doors are all made of fine oak, except for \
+          the iron hinges and small metal plates at the bottom end \
+          of the inside. You can also see a corresponding plate on \
+          the cupboard, placed so that it will meet both plates on \
+          the doors when they close. The doors are open.^";
+    ],
+    before [;
+      Open: <<Open SecretCupboard>>;
+      Close: <<Close SecretCupboard>>;
+    ],
+  has static concealed scenery;
+
+Object -> Hinges "iron hinges"
+  with
+    name "cupboard" "iron" "hinges" "hinge" "great" "craftsmanship" "of",
+    parse_name [; return NastyName(self); ],
+    article "some",
+    description "The hinges are all black, seemingly untouched by time. \
+      Along the lower hinges of each door, you can see tiny electric \
+      wires that connect the doors with the cupboard.",
+    before [;
+      default: if(player in SecretCupboard) 
+                 "The hinges are placed on the outside of the \
+                   cupboard. You can't reach them from here.";
+    ],
+  has static concealed scenery pluralname;
+
+Object -> Wires "electric wires"
+  with
+    name "tiny" "electric" "wires" "wire" "black",
+    article "some",
+    description [;
+      if(self has general) "The electric wires have been cut.";
+      "The electric wires are covered in black plastic.";
+    ],
+    before [;
+    CutWith, Cut:
+      if(player in SecretCupboard) 
+        "The wires run along the hinges on the outside of the \
+        cupboard. You can't reach them from here.";
+
+      if(second==0 && TestScope(Knife)) second=Knife;
+      if(second==0 && TestScope(Nippers)) second=Nippers;
+      if(second==0) "You can't cut the wires without a tool!";
+      if(second~=Knife or Nippers)
+        print_ret "You can't cut the wires with ", (the) second, "!";
+
+      if(self has general) "You already did that.";
+      give self general;
+      print_ret "You cut the wires with ", (the) second, ".";
+    default:
+      if(player in SecretCupboard) 
+        "The wires run along the hinges on the outside of the \
+        cupboard. You can't reach them from here.";
+    ],
+  has static concealed scenery pluralname;
+
+Object -> SecretCupboard "oak cupboard"
+  with
+    name "front" "large" "oak" "cupboard",
+    article "an",
+    description [;
+      print "It is a large cupboard, all made of oak.";
+      if(player in SecretCupboard) {
+        if(action==##Examine) {
+          if(self has general) {
+            if(CupboardWall has open)
+              print " The secret door in the rear wall stands wide open.";
+            else
+              print " The secret door in the rear wall is closed.";
+          }
+          else
+            print " The rear wall seems a bit lighter than the rest of \
+              the cupboard. Maybe the cupboard has been repaired at some \
+              point in history.";
+        }
+        else {
+          if(self has general) {
+            if(CupboardWall has open)
+              print " The secret door in the rear wall stands wide open, \
+                letting in all the light you can wish for.";
+            else
+              print " The secret door in the rear wall is closed. \
+                Some light finds its way in between and around the doors.";
+          }
+          else 
+            print " Some light finds its way in between and around the doors.";
+        }
+      }
+      else
+        print " The two doors \
+          that cover the entire front rest upon black iron hinges of great \
+          craftsmanship. Judging from the \
+        sheer size of the cupboard, and how \
+        perfectly it fits into the niche into which it extends,
+        you can only assume that it has been built in this very location.";
+      new_line;
+    ],
+    before [;
+      Puzzles.PuzzleSeen(CupboardPuzzle);
+      Pull, Push: "It fits so perfectly into its niche in the wall \
+        that it won't budge at all. Also, it looks extremely heavy.";
+      Open:
+        if((CupboardWall hasnt general)&&
+           (CupboardWall has open)&&
+           (self hasnt open) && Cord hasnt general) {
+          deadflag=1;
+          "As you open the cupboard, you set off an explosion that \
+            immediately kills you.";
+        }
+      Go:
+        if(noun==n_to) {
+          <Enter CupboardWall>;
+          if(location==SecretRoom)
+            return 3;
+          else
+            return 2;
+        }
+        if(noun==s_to && (SecretCupboard has open)) {
+          PlayerTo(StorageRoom,2);
+          return 3;
+        }
+     ],
+    ! Remove add_to_scope if OWN_VERSION
+!    #IFDEF OWN_VERSION;
+!    #IFNOT;
+!  add_to_scope [ x;
+!    if(player in self)
+!      objectloop(x in self)
+!       AddToScope(x);
+!  ],
+!    #ENDIF;
+  has static concealed openable container enterable;
+
+
+Object -> -> Uniforms "old uniforms of German nazi style"
+  with
+    name "old" "uniforms" "uniform" "of" "german" "nazi" "style",
+    article "some",
+    description [;
+    	print "The uniforms are";
+    	if(self has general) print " lying in an unorderly heap on the floor of \
+    	  the cupboard, but are quite ";
+    	else print " hanging from a metal bar and are quite ";
+    	"well preserved. There are different signs of military rank on them, \
+    	but you don't know what they mean.";
+    	],
+    before [;
+    Examine, Search:;
+    Take, Remove: "Do you think you will be a very popular person around \
+      the centre wearing a nazi uniform? Think again!";
+    Push, Pull:
+      "As you move the uniforms aside, you are not too surprised to find that \
+      there is a rear wall of the cupboard further in.";
+    default:
+      "You don't need to fiddle about with them. They can't do anything \
+      useful for you, except for reminding you of a horrible era.";
+    ],
+    add_to_scope [;
+!         AddToScope(CupboardHole);
+         if(MetalBar.fitted)
+           AddToScope(MetalBar);
+    ]
+  has pluralname;
+
+Object -> -> Plates "metal plates"
+  with
+    name "small" "shiny" "metal" "plate" "plates",
+    article "some",
+    description "The plates are made of some shiny metal.",
+    before [;
+      default:
+        if((SecretCupboard hasnt open)&&(player notin SecretCupboard))
+          "The plates are on the inside of the cupboard. \
+            You can't reach them from here.";
+    ],
+  has static concealed scenery pluralname;
+
+Object -> -> CupboardWall "the rear wall of the cupboard"
+  with
+    name "rear" "wall" "light" "lighter" "shade" "north" "northern" "back",
+    description [;
+      print "The rear wall is made of oak, just like the \
+        rest of the cupboard, but it certainly has a lighter \
+        shade.";
+      if(self has open)
+        " The door in the wall is wide open, providing an exit \
+        to the north.";
+      else {
+        if(SecretCupboard has general)
+          " The secret door is closed.";
+        else
+          " Also, when you look closely, the carpenter hasn't \
+          done a proper job in attaching it to the floor piece, since \
+          there is a small crack at the intersection.";
+      }
+    ],
+    before [;
+      Enter:
+        if(self hasnt open)
+          rfalse;
+        PlayerTo(SecretRoom,2);
+        rtrue;
+      Pull:
+        if(self has open)
+          <<Close self>>;
+        else
+          "There's no way you can get a grip on the wall.";
+      Open, Push:
+        if(self has open)
+          "It is already open.";
+        if(self has general || ! disarmed
+           (Wires hasnt general && SecretCupboard hasnt open)) {
+          give self open;
+          give SecretCupboard general; ! Found the secret door
+          Achieved(17);
+          "You push open the wall, revealing a room to the north.";
+        }
+        deadflag=1;
+        "As you push at the wall, it gives way. However, you seem to have \
+        triggered a terrible explosion that kills you.";
+    ],
+    describe [; rtrue;],
+    add_to_scope [;
+      if(player in SecretCupboard && (SecretCupboard hasnt open)) {
+        AddToScope(CupboardDoor);
+        AddToScope(Hinges);
+        AddToScope(Wires);
+      }
+    ],
+  has static scenery openable proper;
+
+Object -> -> CupboardCrack "crack"
+  with
+    name "crack" "intersection" "small",
+    description [;
+      if(CupboardWall hasnt general)
+        print "The crack is about 60 centimetres long. You can see \
+          a metal plate stuck in the crack, or possibly two plates \
+          pressed together.^";
+      else
+        print "The crack has widened to reveal a doorway.^";
+    ],
+  has static concealed scenery;
+
+Object -> CastleShelves "set of shelves"
+  with
+    name "shelf" "set" "of" "shelves" "top",
+    before [;
+      Examine, Search:
+        print "There are five shelves all in all. The bottom shelf is \
+          no more than ten centimetres from the floor, and the top \
+          one is close to the ceiling, three metres from the floor or so.";
+        if(WoodenLadder in CastleShelves) {
+          if(player in WoodenLadder) {
+            if(IronKettle in CastleShelves)
+              print " There is a big iron kettle on the top shelf.";
+          }
+          else {
+            print " The ladder is raised against the shelves.";
+          }
+        }
+        else
+          print " With a little jumping, you are tall enough to see the \
+            surface of all the shelves, save the top one. They all seem \
+            empty.";
+      print "^";
+        rtrue;
+      Receive:
+!        if(noun~=WoodenLadder)
+          "The shelves could be rotten. You don't dare to put \
+            anything potentially useful on them.";
+      Enter:
+        "It's really hard to get a good grip, and the shelves don't \
+           feel too sturdy either. You decide not to risk it.";
+      Climb:
+        if((WoodenLadder in  CastleShelves)&&(player notin WoodenLadder))
+          <<Climb WoodenLadder>>;
+        else
+          <<Enter CastleShelves>>;
+    ],
+  has scenery static supporter;
+
+Object SomeSnow "clump of snow"
+  with
+    name "clump" "of" "snow" "lump",
+    before [;
+    Take, Remove: "The snow is very dry and blows away from your hands. \
+      You would need something to put it in.";
+    Drop:
+      remove self;
+      if(TestScope(Blizzard))
+        "Dropped. Like there was not enough snow here already.";
+      "The clump of snow breaks and spreads out over the floor.";
+    ],
+  ;
+
+Bottle IronKettle "iron kettle"
+  with
+    name "iron" "kettle" "large",
+    liquidspace 300,
+    number 0,
+    description [;
+      print "It is a large, black iron kettle, easily big enough to \
+        cook a dinner for 20 people. ";
+      if(self has general) "It is hot. ";
+      self.write_contents(true);
+      "";
+    ],
+    article "an",
+    before [;
+     Take, Remove:
+      if(self has general) "It is too hot!";
+     FillWith:
+      if(child(self)==SomeSnow) "The kettle is already full of snow.";
+      if(second==Blizzard) {
+        move SomeSnow to self;
+        self.number=0;
+        StartDaemon(self);
+        "You fill the kettle with snow.";
+      }
+!     Receive:
+!      if(child(self)) "The kettle is already full.";
+    ],
+    after [;
+      Insert:
+        if(second==FirePlace || second==FireWood)
+          StartDaemon(self);
+    ],
+    daemon [x;
+      x=superparent(self);
+      if(SomeSnow in self &&  x==SCorridor or NCorridor or Hall or
+         LivingRoom2 or OuterLivingRoom or OuterHall) {
+        ! The snow is getting warmer
+        ++self.number;
+        if(self.number==10) {
+          if(TestScope(self))
+            print "^The snow in the kettle is begining to melt.^";
+        }
+        if(self.number==20) {
+          self.melt_snow();
+          if(TestScope(self)) print "^The snow in the kettle has melted.^";
+        }
+      } else {
+        self.number=0;
+      }
+
+      if(FireWood.number>0 && (self in FireWood || self in parent(FireWood))) {
+        if(self hasnt general) {
+          give self general;
+          if(TestScope(self))
+            print "^The kettle is getting hot.^";
+        }
+        else if(SomeSnow in self) {
+          self.melt_snow();
+          if(TestScope(self)) print "^The snow in the kettle melts.^";
+        }
+      } else {
+        if(self has general) {
+          StopDaemon(self);
+          give self ~general;
+          if(TestScope(self))
+            print "^The kettle is not as hot anymore.^";
+        }
+      } 
+    ],
+    melt_snow [x;
+      remove SomeSnow;
+      x=Water.create();
+      x.quantity=70;
+      move x to self;
+      self.liquidspace=self.liquidspace-x.quantity;
+    ],
+  has container open huge weird;
+
+Room SecretRoom "Secret Room"
+  with
+    description [;
+      print "This appears to have been a hide-away during the war. \
+        It's a small and dark room, somewhat L-shaped around the large \
+        cupboard that protrudes into the room in the southeast corner. \
+        The door in the rear wall of the cupboard to the south provides \
+        the sole exit. It seems like this room has been deserted for a long time, dust \
+        covers the place and it smells very musty.";
+      new_line;
+    ],
+    before [;
+      Go:
+        if(noun==s_to)
+          if(CupboardWall has open) {
+            if(SecretCupboard has open)
+              PlayerTo(StorageRoom,2);
+            else
+              PlayerTo(SecretCupboard);
+            return 3;
+          }
+    ],
+    s_to  [; "The rear wall of the cupboard is closed."; ],
+    cant_go_msg "A stone wall blocks your path.",
+  has light;
+
+Object -> DummyOakCupboard "oak cupboard"
+  with
+    name "oak" "cupboard",
+    parse_name [; return NastyName(self); ],
+!  description "The rear wall of the cupboard is somewhat lighter than \
+!    the western side wall. The eastern side wall can't be seen here.",
+    description [;
+      print "The back part of the cupboard is sticking out from the south-east \
+            corner of this room";
+      if(CupboardWall  has open)
+        print ". The rear wall stands open, providing an exit to the south";
+      else
+        print ". The rear wall is closed";
+      if(MetalBar.fitted)
+      	print ". On the exposed western side wall you notice a protrusion";
+      ".";
+   ],
+  has scenery static;
+  
+
+Object -> SecretSideRearWall "the rear wall of the cupboard"
+  with
+    name   "cupboard" "rear" "wall" "backside",
+    parse_name [; return NastyName(self,1); ],
+    description [;
+      print "The rear wall is made of oak, just like the \
+        rest of the cupboard.";
+      if(CupboardWall has open)
+        " The door in the wall is wide open, providing an exit \
+        to the south.";
+      else " The secret door is closed.";
+    ],
+    before [;
+      Enter:
+        if(CupboardWall hasnt open)
+          rfalse;
+        PlayerTo(SecretCupboard,2);
+        rtrue;
+      Push:
+        if(CupboardWall has open)
+          <<Close self>>;
+        else
+          "It is already closed, and can't be pushed any further.";
+      Open, Pull:
+        if(CupboardWall has open)
+          "It is already open.";
+        give CupboardWall open;
+        "You push open the wall, forming an exit to the south.";
+      Close:
+        if(CupboardWall hasnt open)
+          "It isn't open.";
+        give CupboardWall ~open;
+        "You close the secret door.";
+    ],
+    describe [; rtrue;],
+    has proper static concealed scenery openable;
+
+Object -> SecretSideSideWall "the side wall of the cupboard"
+  with
+    name "west" "western" "cupboard" "wall" "side" "protrusion",
+    parse_name [; return NastyName(self,3); ],
+    description [;
+      print "The side wall is made of oak, just like the \
+        rest of the cupboard.";
+      if(MetalBar.fitted)
+      	print " A tubular metal bar extends slightly from a hole in the wall.";
+      else
+        print " There is a hole in the wall.";
+      new_line;
+    ],
+  has scenery static concealed;
+
+
+Object -> MetalBar "metal bar"
+  with
+    name "metal" "tubular" "bar",
+    parse_name [; return NastyName(self,1);],
+    description [;
+    	if(self.fitted && (location==StorageRoom))
+    	  "The ",(name) self," extends out through holes in the sides of the \
+    	    cupboard.";
+        print "It's a long, tubular ",(name) self,". The material is thick, but the \
+    	  opening is still several centimeters across.";
+    	if(self.fitted && location==SecretRoom)
+    	  print " The bar is fitted into a hole in the side of the cupboard.";
+    	new_line;
+    	rtrue;
+    ],
+    fitted true,
+    before [;
+    	Take, Remove, Push, Pull: if(self.fitted && (location==StorageRoom))
+    		"The bar extends out through holes in both sides of the \
+    		  cupboard. As you try to budge it, it moves a \
+    		  little at the right-hand end. However, its left-hand end seems to be \
+    		  securely fixed in place on the other side of the hole in the cupboard wall.";
+    	      else
+    	        if(action==##Take or ##Remove or ##Pull && self.fitted) {
+    	          give self ~concealed;
+    	          give Uniforms general;
+    	          self.fitted=false;
+    	          move self to SecretRoom;
+                  Puzzles.PuzzleSolved(CupboardPuzzle);
+    	          "With great effort you pull at the bar until suddenly it \
+    	            lets go from the cupboard. Both you and the bar end up \
+    	            on the floor.";
+    	        }
+    	Insert: if(second==CupboardHole && (location==SecretRoom)) {
+    	          give self concealed;
+    	          self.fitted=true;
+    	          move self to SecretRoom;
+    	          "You put ",(the) self," back into the hole, where it snaps \
+    	            into place with a loud click.";
+    	        }
+        Turn: if(self.fitted && location==StorageRoom)
+                "You can't turn the bar at all, but you notice that it moves \
+                   a little at the right-hand end.";
+    ],
+    has concealed huge weird;
+
+Object -> CupboardHole "hole in the cupboard wall"
+  with
+    name "hole" "holes",
+    description [;
+      if(MetalBar.fitted) "The bar runs through the hole.";
+      else "The hole is empty.";
+    ],
+    before [;
+      Receive: if(noun~=MetalBar) "That seems pointless.";
+               if(location~=SecretRoom)
+                 "The bar is too long to be inserted from this side.";
+               move noun to SecretRoom;
+               give noun concealed;
+               noun.fitted=true;
+    ],
+    found_in SecretRoom SecretCupboard,
+  has static scenery concealed container;
+
+Object -> MetalStrap "metal strap"
+  with
+    name "metal" "strap",
+    description "The strap is securing the bomb to the wall.",
+    before [;
+    Cut, CutWith: "The strap is too thick to cut.";
+    Open, Unlock: "The ends of the strap have been riveted together.";
+    ],
+  has concealed static;
+
+Object -> Bomb "bomb" 
+  with
+    name "bomb" "sticks" "of" "dynamite" "stick" "small" "black" "box",
+    initial [;
+      print "Close to the cupboard you see something which looks like a bomb!";
+      "";
+    ],
+    description [;
+      print "The bomb consists of a few sticks of dynamite and a small black \
+        box attached to the wall with a metal strap. From the black box a \
+        thick black cord ";
+      if(WrongCord hasnt general) print "is connected to the cupboard. ";
+      else print ", which used to be connected to the cupboard, hangs loose. ";
+      print "Also, a thin red electrical wire ";
+      if(Cord hasnt general)
+        "is connected to the dynamite.";
+      ", which runs from the black box to the dynamite, has been cut in two.";
+    ],
+    before [;
+     Take, Remove, Push, Pull:
+     	"A metal strap prevents you from moving the bomb.";
+     Burn:
+      "Nope, it isn't that kind of bomb you have here. As far as you can \
+      tell it is set off by electrical means.";
+    ],
+  has transparent weird;
+
+Object -> -> WrongCord "thick cord"
+  with
+    name "thick" "black" "electrical" "cord" "cable",
+    description [;
+      if(self has general) "It has been cut in two, revealing four \
+        electrical wires inside the cord.";
+      "It looks as if it contains several thinner wires.";
+    ],
+    before [x;
+    Cut, CutWith:
+      if(second==0 && TestScope(Knife)) x=Knife;
+      if(second==0 && TestScope(Nippers)) x=Nippers;
+      if(x) { second=x; print "(using ", (the) x, ")^^"; }
+
+      if(second==Knife || second==Nippers) {
+        if(self hasnt general) {
+          give self general;
+          if(Cord hasnt general) {
+            deadflag=1;
+            "You hear a click from the black box, and then the charge goes \
+              off.";
+!           #¤# BOOM
+          }
+          give CupboardWall general; ! disarm the trap
+          "You cut ",(the) self,". Again, nothing blows up.";
+
+        } else print_ret (The) self," is already cut.";
+      } else "You need a better tool for that.";
+    ],
+  has concealed static;
+
+Object -> -> Cord "thin wire"
+  with
+    name "thin" "red" "electrical" "cable" "wire",
+    description [;
+      print "It's a short piece of electrical wire.";
+      if(self has general) " It has been cut in two.";
+      "";
+    ],
+    before [x;
+    Cut, CutWith:
+      if(second==0 && TestScope(Knife)) x=Knife;
+      if(second==0 && TestScope(Nippers)) x=Nippers;
+      if(x) { second=x; print "(using ", (the) x, ")^^"; }
+
+      if(second==Knife || second==Nippers) {
+        if(self hasnt general) {
+          give self general;
+          give CupboardWall general; ! disarm the trap
+          "You cut ",(the) self,". Nothing blows up. Your heart starts beating again.";
+        } else print_ret (The) self," is already cut.";
+      } else "You need a better tool for that.";
+    ],
+  has concealed static;
+
+Room StoneRoom "Stone Room"
+  with
+    description [;
+      print "There is a quite large, square hole set in the floor of \
+      this room, providing a nasty trap for the unobservant. This was \
+      probably not its original purpose, but there is no hint of what it \
+      was intended to serve as. There is an exit to the east.";
+      if(WoodenLadder has general)
+        print " A ladder lowered into the hole provides an exit downwards.";
+      new_line;
+      rtrue;
+    ],
+    doubledest 'stone' 'room',
+    before [;
+     Jump: "The dim light doesn't show the bottom of the hole very clearly and \
+           you decide that it's better not to risk a jump.";
+     Exit: if(verb_word=='jump') <<Jump>>;
+     Climb: if(noun==d_obj or u_obj) <<Go noun>>;
+    ],
+    e_to Hallway1,
+    d_to [x ;
+      if(WoodenLadder has general) {
+        for(x=parent(IronKettle): x~=0: x=parent(x))
+          if(x==player) "The iron kettle is a little too big to fit through \
+          the hole. You'll have to part with it.";
+        return Cellar;
+      }
+      <<Jump>>;
+    ],
+    cant_go_msg "A stone wall blocks your path.",
+  has light;
+
+Object -> Hole "hole"
+  with
+    name "in" "the" "square" "quite" "large" "lack" "of" "floor" "hole" ,
+    parse_name [; return NastyName(self,7); ],
+    before [;
+     Search:
+      if(player in Cellar)
+        "Through the hole you can see the stone walls of the room from \
+        which you came here.";
+      else
+        "It's rather dark but you can make out a small room below the \
+        one you're standing in now. You can't see any details, though.";
+     Examine:
+      if(WoodenLadder has general) {
+        if(player in Cellar)
+          "The wooden ladder is raised up through the hole.";
+        "The wooden ladder descends into the darkness below.";
+      }
+      else {
+        print "One might describe it as a lack of ";
+        if(player in Cellar)
+          "ceiling.";
+        "floor.";
+      }
+     Receive:
+      if(noun notin player) {
+        print "(taking ",(the) noun," first.)^";
+        <Take noun>;
+      }
+      if(noun notin player) rtrue;
+      if(noun has worn) {
+        print "(taking off ",(the) noun," first.)^";
+        <Disrobe noun>;
+        if(noun has worn) rtrue;
+      }
+      if(noun==IronKettle)
+        "The hole is rather big. The kettle, however, is \
+          slightly bigger.";
+      if(noun~=WoodenLadder) {
+        if(player in Cellar) {
+          print "You put ",(the) noun," in the hole, but \
+            strangely enough it just falls to the floor.^";
+          move noun to Cellar;
+        }
+        else {
+          print "You drop ",(the) noun," through the hole.";
+          if(Hole hasnt general)
+            if(noun~=SmallNote && noun~=Note && noun~=SignedPaper)
+              print " From the sound it makes, you guess there \
+                is a stone floor less than 5 metres down.^";
+          else
+            print "^";
+          give Hole general;
+          move noun to Cellar;
+        }
+        rtrue;
+      }
+     Climb: <<Enter Hole>>;
+     Enter:
+      if(player in StoneRoom)
+        <<Go d_to>>;
+      <<Go u_to>>;
+    ],
+    found_in Cellar StoneRoom,
+    add_to_scope [;
+      if(WoodenLadder has general)
+        AddToScope(WoodenLadder);
+    ],
+  has static concealed open;
+
+Room Cellar "Cellar"
+  with
+    description [;
+      print "This appears to be a room in the castle cellar. There is \
+        a square hole set in the ceiling through which light is coming. \
+        There seems to be another room to the west.";
+      if(WoodenLadder has general)
+        " A ladder is raised up through the hole.";
+      "";
+    ],
+    before [;
+     Climb:
+      if(noun==d_obj or u_obj)
+        <<Go noun>>;
+    ],
+    w_to DampPassage,
+    u_to [x;
+      if(WoodenLadder has general) {
+        for(x=parent(IronKettle): x~=0: x=parent(x))
+          if(x==player) "The iron kettle is a little too big to fit through \
+          the hole. You'll have to part with it.";
+        return StoneRoom;
+      }
+      "The hole in the ceiling is too far above your head. You can't \
+      reach it.";
+    ],
+    cant_go_msg "A stone wall blocks your path.",
+  has light;
+
+Room DampPassage "Damp Passage"
+  with
+    description "You are in a damp passage which runs from east to north.",
+    e_to Cellar, n_to LHall,
+    cant_go_msg "A stone wall blocks your path.",
+  has light;
+
+Room LHall "Hall"
+  with
+    description [;
+      if(player in Fireplace) {
+        "You are in the grand fireplace of the castle. This \
+        is where they used to cook all the food in the good old days. Now \
+        it is deserted, and no one has bothered to clean the soot \
+        off the walls or the bird droppings from the floor. \
+        Some daylight illuminates the place from above.";
+      } else {
+        "You are standing in an underground hall which is about \
+        six by nine metres. In the northern wall is set a large fireplace \
+        of old design. The room is dimly lit by the small amount of \
+        daylight that filters down the chimney and in through the \
+        fireplace. A damp smell hangs over the room. There are exits to \
+        the east and south.";
+      }
+    ],
+    s_to DampPassage, e_to ECellar,
+    cant_go_msg "A stone wall blocks your path.",
+  has light;
+
+SceneryContainer -> FirePlace "fireplace"
+  with
+    name "grand" "large" "fireplace" "beautiful",
+    description [;
+      if(FireWood in self && FireWood.number)
+        "A nice little fire is burning in the fireplace. The light dances \
+        around the walls and makes your shadow do likewise.";
+      print "If you were Santa Claus, this is just the kind of fireplace \
+        you would like to drop down into. It's beautifully decorated and \
+        has stood the tests of time remarkably well.";
+      self.write_contents(false, " In the fireplace you can see ");
+      print "^";
+    ],
+    before [x h;
+     Enter:
+      if(FireWood in self && FireWood.number>0) {
+        "Entering the fireplace while there is a fire burning in it \
+        would be stupid, not to mention dangerous.";
+      }
+      objectloop(x in player) {
+        if(x has huge && x~=IronKettle)
+          h=x;
+      }
+      if(h>0)
+        print_ret "You can't get into the fireplace carrying ", (the) h,".";
+     Receive:
+      if(FireWood in self) <<PutOn noun FireWood>>;
+      if(noun==IronKettle) {
+        move noun to self;
+        "Done.";
+      }
+     Go:
+      if(noun==u_obj) {
+        <Climb DummyChimney>;
+        return 3;
+      }
+     Climb:
+      if(noun==u_obj) <<Go u_obj>>;
+    ],
+  has enterable open;
+
+Object -> Droppings "bird droppings"
+  with
+    name "bird" "dropping" "droppings",
+    article "some",
+    description "Examining the droppings closely, you reach the conclusion \
+      that one probably has to know a lot more about birds than you do to \
+      really appreciate their droppings.",
+      before [;
+       Examine, Search:;
+       default: "You feel that it may be a waste of time.";
+      ],
+  has scenery pluralname;
+
+Object -> DummyChimney "chimney"
+  with
+    name "dirty" "sooty" "black" "walls" "wall" "chimney",  
+    description "The walls of the chimney are all black. Some light comes \
+      down through the chimney, although something is blocking most of it.",
+    before [x h;
+     Climb:
+!      if(noun~=DummyChimney) rfalse;
+      objectloop(x in player) {
+        if(x has huge)
+          h=x;
+      }
+      if(h>0)
+        print_ret "Climbing the chimney carrying ", (the) h,
+          " is out of the question.";
+      if(FireWood notin FirePlace || FireWood.number==0) { 
+        PlayerTo(Chimney);
+        rtrue;
+      }
+      "It's too hot. The fire scorches you as you try.";
+    ],
+  has static scenery concealed;
+    
+Object -> DummyNest "bird's nest"
+  with name "something" "nest" "bird" "bird^s",
+  description "Looking closely, you determine that it must be a \
+              bird's nest, almost completely covering the chimney.",
+  before [;
+  Examine: rfalse;
+  default: "To reach the nest, you'll have to climb the chimney.";
+  ],
+  has scenery;
+
+Room Chimney "Chimney"
+  with
+    initial [x;
+      player.dirty=true;
+      objectloop(x in player)
+        if(x has worn && x ofclass Washable) x.make_dirty();
+
+      Puzzles.PuzzleSeen(WashMyselfPuzzle);
+      "^Since the chimney is both narrow and uneven enough, you \
+      don't have too much trouble climbing it. However, as the walls \
+      are all covered with a thick layer of soot, you can't avoid \
+      getting all sooty yourself.";
+    ],
+    description "You are almost at the very top of the chimney. Just \
+      above your head there is a big bird's nest making further climbing \
+      impossible.",
+    before [;
+      Drop:
+        move noun to Fireplace;
+        "Dropped.";
+     Climb:
+      if(noun==d_obj) <<Go d_obj>>;
+     Jump:
+      if(self hasnt general) {
+        give self general;
+        "This kind of behaviour is just asking for a sudden and violent \
+        death, but I'll let you get away with it this time.";
+      }
+      deadflag=1;
+      "Ok. You jump. It took them a few days to figure out who you were, \
+      and they never did figure out what you were doing in the chimney.";
+    ],
+    d_to [; PlayerTo(Fireplace); rtrue; ],
+    u_to "The bird's nest rests on metal bars, stopping further climbing.",
+    cant_go_msg "The chimney isn't that wide.",
+  has light;
+
+Object -> DummyChimney2 "chimney"
+  with
+    name "dirty" "sooty" "black" "walls" "wall" "chimney",  
+    description "The walls of the chimney are all black with soot.",
+    before [;
+     Climb:
+      PlayerTo(FirePlace);
+      rtrue;
+    ],
+  has static scenery concealed;
+
+SceneryContainer -> Nest "nest"
+  with
+    name "nest" "bird" "bird^s",
+    description [;
+      print "The nest seems to be abandoned now but apparently \
+        belonged to a rather large bird considering its size.";
+      self.write_contents(false, " In the nest you can see ");
+      print "^";
+    ],
+    before [;
+    Push, Take, Remove, PushDir:
+      "You can barely move your arms in this narrow chimney, \
+      and the nest is too heavy.";
+    ],
+  has concealed open;
+
+Object -> -> StorageKey "rusty key"
+  with
+    name "key" "worn" "rusty" "faded" "stained",
+    description [;
+      print "It seems to be a door key of some kind";
+      if(self has moved)
+        print ". It "; 
+      else
+        print " and it has probably been here for a while since it ";
+      "is very faded and has a few stains of rust on it.";
+    ],
+    after [;
+    Take: achieved(18);
+    ];
+
+Room ECellar "Cellar"
+  with
+!    Besides arrangements for a hoist which is set in one corner there is \
+    description "You have come to a dead end of the cellar. This place feels \
+      drier than the rest of the cellar, but just as cold. \
+      Some kind of fungus is growing on the walls, absorbing the sound \
+      of your footsteps as you walk around. The cellar extends further \
+      to the west.",
+    w_to LHall,
+    cant_go_msg "A stone wall blocks your path.",
+  has light;
+
+Object -> Fungus "fungus"
+  with
+    name "fungus" "some" "kind" "of", 
+    article "some",
+    description "The fungus is blue-grey and very soft. With your limited \
+      knowledge of fungus, you can't say much more about it.",
+    before [;
+     Pull, Push, Turn, Take:
+      "It's fungus. It's there. Can't you be happy with that?";
+     Eat:
+      "With your usual habit of inviting danger for no good reason,
+        you grab a piece of fungus off the wall and consume it. It
+        tastes like strawberry.";
+    ],
+  has scenery static concealed pluralname;
+
+Object -> FireWood "firewood"
+  with
+    number 0,
+    article "some",
+    short_name [;
+      if(self.number)
+        print "fire";
+      else
+        print "firewood";
+      rtrue;
+    ],
+    name "fire" "of" "wood" "firewood" "pile",
+    parse_name [;
+      if(self.number)
+        return -1;
+      else
+        return NastyName(self,2);
+    ],
+    initial
+      "Near the entrance of the cellar someone has left a pile of wood.",
+    description [;
+      if(self.number>0)
+        print "The wood is burning";
+      else
+        print "A pile of pine wood cut into pieces. The wood feels and \
+          smells dry";
+      if(child(self)) 
+        print ". On ", (the) self, " sits ";
+      WriteListFrom(child(self), ENGLISH_BIT + RECURSE_BIT);
+      ".";
+    ],
+    daemon [;
+      if(self.number>0) {
+        self.article="a";
+        --self.number;
+        if(self.number==0) {
+          if(TestScope(self)) {
+            print "The wood has been consumed by the fire. \
+              Only ashes remain.";
+          }
+          while(child(self)>0)
+            move child(self) to parent(self);
+          remove self;
+          StopDaemon(self);
+        }
+      }
+    ],
+    before [x;
+     Take:
+      if(IronKettle in self) "You must remove the kettle first.";
+      if(self.number)
+        "How do you survive in everyday life?";
+     Receive:
+      if(noun~=IronKettle)
+        print_ret "Surely you don't want to burn ", (the) noun, "?";
+      startDaemon(IronKettle);
+     Extinguish: "Just how do you plan to do that?";
+     Burn:
+      if(self notin FirePlace) {
+        if(location==LHall) {
+          "Why make a fire on the floor when you have a \
+          large fireplace nearby?";
+        } else if(location==SecretRoom) {
+          "Starting a fire with a bomb nearby? You are crazy!";
+        } else if(location==BeforeCastle or CastleEntrance or Hallway1 or
+                          StairCase1 or StairCase2 or UpperHall or
+                          StorageRoom or StoneRoom) {
+          "If you start a fire here, it could easily be seen \
+          from the centre.";
+        } else if(location==Cellar or DampPassage or ECellar or
+            PoultryCellar or StoneCorridor) {
+          "This room is underground, and without proper ventilation the \
+          smoke from the fire would make it impossible to remain here.";
+        } else if(TestScope(SmokeDetector)) {
+          "That seems a tad risky, considering that the carpet is made from \
+            some sort of plastic. How about burning something smaller?";
+        } else if(~~TestScope(Blizzard)) {
+          "Do you hope to burn the building to the ground? That may not be \
+            such a great idea.";
+        } else {
+          "If you start a fire here, someone from the centre may smell the \
+          smoke later. You can't risk that.";
+        }
+      }
+
+      if(player in Fireplace) "You'd better leave the fireplace first.";
+      if(TestScope(CigaretteLighter)==false)
+        "You don't have anything to ignite the wood with.";
+      if(self.number~=0) "The wood is already burning.";
+      ! Check if other things are in the fireplace
+      objectloop(x in FirePlace) {
+        if(x~=self && x~=IronKettle) 
+          print_ret "Surely you don't want to burn ", (the) x, "?";
+      }
+      self.number=10;
+      StartDaemon(self);
+      "You light the wood with the cigarette lighter. Soon a nice camp \
+      fire is warming up the damp cellar.";
+    ],
+  has supporter weird;
+
+Room Hallway2 "Hallway"
+  with
+      description [;
+        print "This is an old stone hall, covered with dust and snow. A \
+          passage heads southeast, while the hall leads north.";
+        if(WoodenLadder hasnt moved)
+          " A dusty wooden ladder is lying along the western wall.";
+        "";
+      ],
+    se_to CastleEntrance, n_to Kitchen2,
+    cant_go_msg "A scorched wall blocks your path.",
+  has light;
+
+
+Object -> WoodenLadder "wooden ladder"
+  with
+    name "ladder" "wooden" "sturdy" "old" "somewhat" "dusty",
+    describe [;
+      if(self hasnt moved) rtrue;
+    ],
+    description "A somewhat old but yet sturdy wooden ladder.",
+    library_joke 0,
+    before [;
+     Insert:
+      if((second == hole) && (self hasnt general)) {
+        if(player in StoneRoom)
+          print "You lower the ladder into the hole.^";
+        if(player in Cellar)
+          print "You raise the ladder up through the hole.^";
+        move WoodenLadder to Hole;
+        give WoodenLadder general;
+        rtrue;
+      }
+     Raise:
+      if(second==hole && self hasnt general && player in Cellar)
+        <<Insert WoodenLadder Hole>>;
+      if(second==CastleShelves) {
+        move self to CastleShelves;
+        give self concealed;
+        "You raise the ladder at the shelves.";
+      }
+      if(location==Library) {
+        if(self.library_joke==0) {
+          self.library_joke=1;
+          "Sorry, but there are no lewd books here after all. Only \
+          heavy tomes on organic chemistry, automata theory and the \
+          like. A book with a red dragon on the title page raises \
+          your spirits (a fantasy book, a book on black magic?), but it \
+          turns out to be on compiler design. You pull down the ladder.";
+        }
+        "Actually there is nothing special on the shelves out of \
+        reach, so raising the ladder would be pointless.";
+      }
+      if(TestScope(SmokeDetector))
+        "Sorry, there is nothing here to raise the ladder at \
+        from which you could reach the smoke detector.";
+      if(location==CCorridorII or CCorridorII)
+        "There is nothing here to raise the ladder at \
+        from which you could reach the video camera.";
+     Enter: <<Climb self>>;
+     Climb:
+      if(self in CastleShelves) {
+        PlayerTo(WoodenLadder,1);
+        print "You climb the ladder.";
+        if(parent(IronKettle)==0) {
+          move IronKettle to CastleShelves;
+          print " On the top shelf you discover a big iron kettle.";
+        }
+        new_line;
+        rtrue;
+      }
+     Take, Remove:
+      if(WoodenLadder has general) {
+        if(player in StoneRoom)
+          print "You pull the ladder out of the hole.^";
+        else
+          print "You pull down the ladder.^";
+        move WoodenLadder to player;
+        give WoodenLadder ~general;
+        rtrue;
+      }
+      if(self in CastleShelves) {
+        if(player notin self) {
+          move self to player;
+          give self ~concealed;
+          "You manage to get the ladder down.";
+        }
+      }
+    ],
+    after [;
+     Receive:
+      move noun to parent(WoodenLadder);
+      "Strange, it just keeps falling off the ladder.";
+    ],
+  has enterable supporter huge weird;
+
+Room Kitchen2 "Kitchen"
+  with 
+!     In one corner of the room, there is a shaft, which you guess was meant
+!     for a hoist.
+    description "You are in a deserted kitchen. There once was a \
+      large fireplace dominating the room, but it has collapsed. \
+      You can reenter the hall to the south.",
+    namedest "Castle Kitchen",
+    doubledest 'castle' 'kitchen',
+    s_to Hallway2,
+    cant_go_msg "A scorched wall blocks your path.",
+  has light;
+
+ScenerySupporter -> FirePlace2 "fireplace"
+  with
+    name "fireplace" "large" "dominating",
+    description [;
+      self.write_contents(true, "The remains of the fireplace cover \
+                          a large area in the middle of the room. As you \
+                          look at it know, you can imagine what it must \
+                          have looked like, even though only a pile of \
+                          stones remain.");
+    ],
+  has enterable;

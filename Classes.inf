@@ -1,0 +1,1698 @@
+! ============ GENERAL CLASS DEFINITIONS ============
+
+Object ComputerNetwork
+  with
+    login [word_no login_mode   s p i j;
+      ! Check for special logins and write joke messages if found.
+      !
+      ! word_no: index of user/password string in input line
+      ! login_mode: 0 if user_id, 1 if password
+
+      s=WordAddress(word_no);
+      for(i=0: i<self.#user_db/8: i++) {
+        p=self.&user_db-->(i*4+1+login_mode);
+        p.print_to_array(buffer2);
+        if(buffer2-->0~=WordLength(word_no)) continue;
+        for(j=0, p=0: j<buffer2-->0 && p==0: j++) {
+          if((s->j)~=(buffer2->(2+j))) p=1;
+        }
+        if(p==0) break; ! match found
+      }
+      if(i==self.#user_db/8) rtrue; ! no match found
+
+      ! We have a userid/password match
+      if(self.&user_db-->(i*4)>1) rtrue; ! don't repeat the joke
+
+      if(login_mode==0) {
+        self.&user_db-->(i*4)=1;
+      } else {
+        if(self.&user_db-->(i*4)==1) {
+          print (string) self.&user_db-->(i*4+3), "^^";
+          self.&user_db-->(i*4)=2;
+        } else {
+          self.&user_db-->(i*4)=0;
+        }
+      }
+    ],
+    user_db
+      0 "872325412" "uhlersoth"
+        "As you press the enter key you catch a glimpse of something moving \
+        in the doorway, which will haunt you in the years to come. There is \
+        a Thing there, a monster which can not be descibed - there is no \
+        language for such abysms of shrieking and immemorial lunacy, such \
+        eldritch contractictions of all matter, force, and cosmic order.^^\
+        Then, as suddenly as it appeared, the Lurking Horror is gone."
+      0 "falken" "joshua"
+        "Greetings Dr. Falken. Would you like to play a game of Vacation Gone Awry?",
+  ;
+    
+
+
+Class AutoComputer
+  with
+    ! This function adds computers. Only one in each location!
+
+    ! overrides and access functions
+    computer_name "this computer", ! override for personal message
+    start_using [pc_actor; give self on; self.user=pc_actor; ], 
+    stop_using [; self.user=0; ],
+
+    ! internal functions and data
+    name "computer" "pc" "mouse" "keyboard" "monitor" "screen",
+    short_name "computer",
+    number 0, ! 0 name, 1 password
+    parse_id 0,
+    user 0,
+    parse_name [x i n;
+      x=0;
+      self.parse_id=0;
+      while((n=NextWordStopped())~=-1) {
+        for(i=(self.#name/2)-1: i>=0: i--) {
+          if(n==self.&name-->i) {
+            ++x;
+            if(n=='mouse' or 'keyboard' or 'monitor') self.parse_id=n;
+            if(n=='screen') self.parse_id='monitor';
+            break;
+          }
+        }
+        if(i<0) break;
+      }
+      return x;
+    ],
+    description [;
+      if(self.parse_id=='mouse')
+        "The mouse is attached to the computer with a long cord.";
+      if(self.parse_id=='keyboard')
+        "It's one of those weird German keyboards, where Y and Z have \
+        swapped places. They take some time to get used to.";
+      if(self.parse_id==0)
+        print "The computer is an off-the-shelf PC, equipped with monitor, \
+              mouse and keyboard. ";
+      return self.print_screen();
+    ],
+    print_screen [;
+      if(self hasnt on)  "The PC is switched off and the screen is blank.";
+      if(self.user) {
+        if(TestScope(self.user))
+          print_ret "Some application windows are open, but you can't \
+                    get close enough to see details while ",
+                    (the) self.user, " is working with the PC.";
+        "The screen is locked, and you need to enter a password to \
+        access the computer.";
+      }
+      if(self.number==0)
+        print_ret "The screen says ~Welcome to ",
+                  (string) self.computer_name, ". Please enter user name:~";
+      "The screen says ~Please enter password:~";
+    ],
+    before [;
+    SetTo:
+      if(self hasnt on) "Nothing happens, as the computer is turned off.";
+      if(self.user) {
+        if(TestScope(self.user))
+          print_ret (The) self.user, " wouldn't appriciate that.";
+        "Sorry, that password was not accepted.";
+      }
+      ComputerNetwork.login(2, self.number);
+      if(self.number==0) {
+        self.number=1;
+        "The screen changes to ~Please enter password~";
+      }
+      self.number=0;
+      "A window appears with the text ~Login failed. User name or password \
+      is wrong. Please check and try again, or contact Maria Henkel (user \
+      administrator).~ You acknowledge the message and the login screen \
+      reappears.";
+    Push, PushDir:
+      if(self.user && TestScope(self.user))
+        print_ret (The) self.user, " won't let you.";
+      if(self.parse_id=='mouse')
+        "There are currently no icons on the screen, so using the mouse
+        is pretty pointless.";
+      if(self.parse_id=='keyboard') "Use ~Type XXX on keyboard~ instead.";
+      "Nothing will be achieved by that.";
+    Take, Remove:
+      if(self.user && TestScope(self.user))
+        print_ret (The) self.user, " won't let you.";
+      if(self.parse_id)
+        print_ret "The ", (address) self.parse_id,
+                  " is connected to the computer.";
+      "The computer will not be of much use if you unplug it.";
+    SwitchOn:
+      if(self.user && TestScope(self.user))
+        print_ret (The) self.user, " won't let you.";
+      if(self.parse_id) "The power switch sits on the computer itself.";
+      if(self has on) "The computer is already switched on.";
+      if(self.user) {
+        print (The) self.user;
+        if(TestScope(self.user)) " won't let you.";
+        " will soon be back, so you'd better leave the computer alone.";
+      }
+      give self on;
+      self.number=0;
+      print "You switch on the computer. After booting up a login screen \
+            appears on the monitor. ";
+      return self.print_screen();
+    SwitchOff:
+      if(self.parse_id) "The power switch sits on the computer itself.";
+      if(self hasnt on) "The computer is already switched off.";
+      if(self.user) {
+        print (The) self.user;
+        if(TestScope(self.user)) " won't let you.";
+        " will soon be back, so you'd better leave the computer alone.";
+      }
+      give self ~on;
+      "You switch off the computer. The screen goes blank.";
+    ],
+  has static;
+
+
+
+Class Washable
+  !* Assumes that player has:
+  !   waterquant 0,
+  !   check_water [x;
+  !    if(x ofclass Water) player.waterquant=player.waterquant+x.quantity; ],
+  !* Use make_dirty instead of x.dirty=true!!!
+
+  with
+    dirty false,
+    dirtyness 0, ! Used by some instances, which may get partially dirty
+    soap_smell false,
+    short_name [; if(self.dirty) print "dirty "; rfalse; ],
+    parse_name [x i n;
+      x=0;
+      while((n=NextWordStopped())~=-1) {
+        for(i=(self.#name/2)-1: i>=0: i--) {
+          if((n==self.&name-->i) || (self.dirty && n=='dirty')) {
+            ++x;
+            break;
+          }
+        }
+        if(i<0) break;
+      }
+      return x;
+    ],
+    description [;
+      if(self.dirty) print_ret (The) self, " is dirty.";
+      print_ret "There is nothing special about ", (the ) self, ".";
+    ],
+    make_dirty [; self.dirty=true; self.soap_smell=false; ],
+    before [;
+      Smell:
+        if(self.soap_smell)
+          print_ret (The) self, " has a scent of lavender.";
+      Rub:
+        if(self.dirty==false) print_ret (The) self, " is already clean.";
+        player.waterquant=0;
+        LoopOverScope(player.check_water);
+        if(player.waterquant<50)
+          "You don't have enought water, and would only smear the dirt out.";
+        self.dirty=false;
+        self.dirtyness=0;
+        print "You wash ", (the) self, " carefully with water";
+        if(TestScope(Soap)) {
+          self.soap_smell=true;
+          print " and soap";
+        }
+        ".";
+   ];
+
+Class Rope
+  ! Written by Johan Berntsson Apr 21, 1997. E-mail: goodday@ppp.bekkoame.ne.jp
+  ! 
+  ! A general rope routine. This rope can be tied to objects at both ends,
+  ! stretched over any number of rooms, pulled (possibly dragging non-static objects
+  ! along), etc.
+  !
+  ! Declare the rope with all segments but one as children of the first. Example:
+  !     Rope ->    Rope1a "rope" with name "rope";
+  !     Rope -> -> Rope1b "rope" with name "rope";
+  !     Rope -> -> Rope1c "rope" with name "rope";
+  !
+  ! Making a good rope is not trivial and there are certainly bugs left. If you find
+  ! any, please report this to me and I'll try to fix it. Try to reach me on
+  ! rec.arts.int-fiction if the e-mail address doesn't work.
+  !
+  with
+    ! =================================================================================
+    ! == Instances of this class can be connected to almost anything and all items   ==
+    ! == not nailed down can be dragged along. It is up to the subclasses/instances  ==
+    ! == to restrict this by providing before-routines for Tie, UnTie and UnTieObj   ==
+    ! =================================================================================
+    ! ==    The attributes below can be overridden to customize the instances.       ==
+    ! =================================================================================
+
+    name "end" "of",
+    ! NB: setting msg_examine1 to 0 disables the react-before/Examine routine
+    !     setting msg_vehicle_drag to 0 disables automatic pulling of small object by vehicles
+    !
+    msg_examine1        [; print "Except for ", (the) self, " being tied to it, \
+                                 you see nothing special about ", (the) noun, "."; ],
+    msg_examine2        [; print " There is ", (a) self, " tied to it."; ],
+    msg_tooshort        [; print (The) self, " is too short and you have to \
+                                 leave it behind.^"; ],
+    msg_describe        [;  print "There is ", (a) self, " here, tied to "; ],
+    msg_description     [; print "It's an ordinary looking ", (name) self,
+                                 ", several metres long"; ],
+    msg_breaking        [x; print "^", (The) self, " breaks free from ", (the) x, ".^"; ],
+    msg_vehicle_drag    [x y; print "^", (The) x, " is here, dragged along by ", (the) y, ".^"; ],
+    msg_tie_description ". It is tied to ",
+    msg_carry_connected [; print "You are holding ", (a) self,
+                                 ", which is connected to ";],
+
+    ! The message(s) below can only be strings.
+    msg_tiedto          "tied to ",
+
+    ! ========= Internally used variables, don't manipulate them. ===========
+    init                false,
+    floating            false,
+    tie_to              0 0,
+    next                0,
+    prev                0,
+    next_instance       0,
+    prev_instance       0,
+
+    ! ===================== Init and information routines ================
+    add_to_scope [x;
+      if(self.init==false) {
+        ! Init the rope and its additional rope segments (children)
+        while(children(self)>0) {
+          x=child(self);
+          x.next_instance=self.next_instance;
+          x.prev_instance=self;
+          if(self.next_instance~=0) self.next_instance.prev_instance=x;
+          self.next_instance=x;
+          x.init=true;
+          remove x;
+        }
+        StartDaemon(self);
+        self.init=true;
+      }
+    ],
+    dump [x;
+      print "DUMP - Class Rope: all segments:^";
+      for(x=self.head_instance(): x~=0: x=x.next_instance) {
+        if(x==self) print "* "; else print "  ";
+        print (name) x, "(", x, ") in ", (the) parent(x),
+              ". Tied to ", (a) x.&tie_to-->0, " and ", (a) x.&tie_to-->1, ".^";
+      }
+      print "------------------ used segments:^";
+      for(x=self.head(): x~=0: x=x.next) {
+        print "  ", (name) x, "(", x, ") in ", (the) parent(x),
+              ". Tied to ", (a) x.&tie_to-->0, " and ", (a) x.&tie_to-->1, ".^";
+      }
+    ],
+    describe [i1 i2 v1 v2;
+      if(self.head()==self.tail()) {
+        i1=self.head().&tie_to-->0; i2=self.head().&tie_to-->1;
+
+      } else {
+        i1=self.head().&tie_to-->0; i2=self.tail().&tie_to-->0;
+      }
+      if(i1) v1=TestScope(i1); else v1=0;
+      if(i2) v2=TestScope(i2); else v2=0;
+
+      if(v1 || v2) {
+        print "^"; self.print_msg(self, msg_describe);
+        if(v1 && v2) print (the) i1," and ", (the) i2;
+        else if(v1) print (the) i1; else print (the) i2;
+        ".";
+      }
+      rfalse;
+    ],
+    invent [i1 i2;
+      if(self.head()==self.tail()) {
+        i1=self.head().&tie_to-->0; i2=self.head().&tie_to-->1;
+      } else {
+        i1=self.head().&tie_to-->0; i2=self.tail().&tie_to-->0;
+      }
+      if(inventory_stage==2 && (i1 || i2)) {
+        print " (", (string) self.msg_tiedto;
+        if(i1 && i2) print (a) i1, " and ", (a) i2;
+        else if(i1) print (a) i1; else print (a) i2;
+        print ")";
+      }
+    ],
+    description [i1 i2;
+      self.print_msg(self, msg_description);
+      if(self.head()==self.tail()) {
+        i1=self.head().&tie_to-->0; i2=self.head().&tie_to-->1;
+      } else {
+        i1=self.head().&tie_to-->0; i2=self.tail().&tie_to-->0;
+      }
+      if(i1 || i2) {
+        self.print_msg(self, msg_tie_description);
+        if(i1 && i2) print (a) i1, " and ", (a) i2;
+        else if(i1) print (a) i1; else print (a) i2;
+      }
+      ".";
+    ],
+    print_msg [obj prop arg1 arg2 a;
+      ! New PrintOrRun - this version does not print unwanted new-lines
+      a=self; self=obj;
+      switch(ZRegion(obj.prop)) {
+      2: indirect(obj.prop, arg1, arg2);
+      3: print (string) obj.prop;
+      }
+      self=a;
+    ],
+
+    ! ================ Rope manipulation routines ================
+    head_instance [x; x=self; while(x.prev_instance~=0) x=x.prev_instance; return x; ],
+    tail_instance [x; x=self; while(x.next_instance~=0) x=x.next_instance; return x; ],
+    find_free_segment [x;
+      for(x=self.head_instance(): x~=0: x=x.next_instance) if(parent(x)==0) return x;
+      return 0;
+    ],
+    head [x; for(x=self.head_instance():x~=0:x=x.next_instance) if(x.prev==0 && parent(x)~=0) return x; ],
+    tail [x; for(x=self.tail_instance():x~=0:x=x.prev_instance) if(x.next==0 && parent(x)~=0) return x; ],
+    find_local_segment [loc x;
+      for(x=self.head(): x~=0: x=x.next) if(NestedIn(x, loc)) return x;
+      return 0;
+    ],
+    is_connected [obj h t; ! rtrue if obj connected to rope
+      h=self.head(); t=self.tail();
+      if(h==t) { if(h.&tie_to-->0==obj ||  h.&tie_to-->1==obj) rtrue;
+      } else     if(h.&tie_to-->0==obj ||  t.&tie_to-->0==obj) rtrue;
+      rfalse;
+    ],
+    remove_self [x;
+      for(x=self.head_instance(): x~=0: x=x.next_instance) {
+        remove x;
+        StopDaemon(self);
+      }
+    ],
+    dragable [obj;
+      if(obj has static) rfalse;
+      if(obj has scenery) rfalse;
+      rtrue;
+    ],
+    pull_rope [pull_objects h t x;
+      ! return 0 if can't move rope. self if rope moved. object# if object dragged.
+      x=self; h=self.head(); t=self.tail();
+      if(h==t) rfalse;
+      
+      if(self.prev~=0 &&
+         (h.&tie_to-->0==0 || (pull_objects && self.dragable(h.&tie_to-->0)))) {
+        ! drag small objects along
+        if(h.&tie_to-->0) {
+          x=h.&tie_to-->0;
+          move h.&tie_to-->0 to superparent(h.next);
+        }
+        ! update tie_to propery
+        if(self==t && self.prev==h) {
+          if(self.&tie_to-->0) self.&tie_to-->1=h.&tie_to-->0;
+          else self.&tie_to-->0=h.&tie_to-->0;
+        } else h.next.&tie_to-->0=h.&tie_to-->0;
+        ! remove the head
+        h.next.prev=0; remove h;
+        return x;        
+      }
+      if(self.next~=0 &&
+         (t.&tie_to-->0==0 || (pull_objects && self.dragable(t.&tie_to-->0)))) {
+        ! drag small objects along
+        if(t.&tie_to-->0) {
+          x=t.&tie_to-->0;
+          move t.&tie_to-->0 to superparent(t.prev);
+        }
+        ! update tie_to propery
+        if(self==h && self.next==t) {
+          if(self.&tie_to-->0) self.&tie_to-->1=t.&tie_to-->0;
+          else self.&tie_to-->0=t.&tie_to-->0;
+        } else t.prev.&tie_to-->0=t.&tie_to-->0;
+        ! remove the tail
+        t.prev.next=0; remove t;
+        return x;
+      }
+      rfalse;
+    ],
+    dotie [obj h t;
+      ! Avoid messy situations
+      if(obj==0 or player) "You would achieve nothing by this.";
+      if(obj ofclass Rope) "You would achieve nothing by this.";
+
+      while(self.pull_rope(false));
+
+      ! Check if there is a free end of the rope
+      h=self.head(); t=self.tail();
+      if(h==t) { ! only one segment
+         if(h.&tie_to-->0==0 && TestScope(h)) {
+           h.&tie_to-->0=obj;
+         } else if(h.&tie_to-->1==0 && TestScope(h)) {
+           h.&tie_to-->1=obj;
+         } else "There is no free ", (name) self, " end here."; 
+      } else { ! Several segments
+         if(h.&tie_to-->0==0 && TestScope(h)) {
+           h.&tie_to-->0=obj;
+         } else if(t.&tie_to-->0==0 && TestScope(t)) {
+           t.&tie_to-->0=obj;
+         } else "There is no free ", (name) self, " end here."; 
+      }
+
+      rfalse;
+    ],
+    dountie [i1 i2;
+      i1=self.head().&tie_to-->0;
+      if(self.head()==self.tail()) i2=self.head().&tie_to-->1;
+      else i2=self.tail().&tie_to-->0;
+
+      if(i1 && TestScope(i1)) if(self.dountieobj(i1)) rtrue;
+      if(i2 && TestScope(i2)) if(self.dountieobj(i2)) rtrue;
+      rfalse;
+    ],
+    dountieobj [obj h t;
+      if(TestScope(obj)==false) print_ret "You can't reach ", (the) obj, " from here.";
+  
+      h=self.head(); t=self.tail();
+      if(h==t) {
+        if(h.&tie_to-->0==obj) h.&tie_to-->0=0;
+        else if(h.&tie_to-->1==obj) h.&tie_to-->1=0;
+        else print_ret (The) self, " is not ", self.msg_tiedto, (the) obj, ".";
+      } else {
+        if(h.&tie_to-->0==obj) h.&tie_to-->0=0;
+        else if(t.&tie_to-->0==obj) t.&tie_to-->0=0;
+        else print_ret (The) self, " is not ", self.msg_tiedto, (the) obj, ".";
+      }
+      rfalse;
+    ],
+    move_rope [segment old_room new_pos new_room h t i j;
+      ! segment is segment to move.
+      ! old_room is the *room* where the rope is now
+      ! new_pos is the *position* in the *new* room where you want to put the rope
+      !
+      ! RETURN VALUES: 0=leaving rope. >0=new segment
+      ! Collect all loose ends
+      while(self.pull_rope(false));
+
+      ! Default is that the current segment mustn't leave its place.
+      move segment to old_room;
+      
+      ! Init some variables
+      new_room=superparent(new_pos);
+      h=self.head(); t=self.tail();
+
+      ! If only one segment long; and all tied ends have moved to new_room or not
+      ! tied at all, then move the rope as well.
+      if(h==t) i=true; else i=false;
+      if(i && h.&tie_to-->0 && superparent(h.&tie_to-->0)~=new_room) i=false;
+      if(i && h.&tie_to-->1 && superparent(h.&tie_to-->1)~=new_room) i=false;
+      if(i) {
+        move segment to new_pos;
+        return segment;
+      }
+
+      ! prevent if only one segment long and all ends tied down
+      ! (but not if tied at items I carry or am carried in)
+      if(h==t) {
+        for(j=player: parent(parent(j))~=0: j=parent(j));
+        if(h.&tie_to-->0 && h.&tie_to-->1) {
+          if(h.&tie_to-->0~=j && NestedIn(h.&tie_to-->0, j)==false &&
+             h.&tie_to-->1~=j && NestedIn(h.&tie_to-->1, j)==false) {
+            return 0;
+          }
+        }
+      }
+
+      ! Is there another segment of the rope present at the new location?
+      i=self.find_local_segment(new_room);
+      if(i~=0) {
+        move i to new_pos;
+        return i;
+      }
+ 
+      ! Try to get a segment which is not currently used.
+      i=self.find_free_segment();
+      if(i) {
+        if(h==t && segment==h) {
+          ! Only one segment
+          if(h.&tie_to-->0 && TestScope(h.&tie_to-->0)) { ! *not* ==false)
+            ! Tied to something which hasn't moved away
+
+            ! ========= old (wrong?) code
+            !i.&tie_to-->0=h.&tie_to-->0;
+            !h.&tie_to-->0=h.&tie_to-->1;
+            ! ========= new code
+            i.&tie_to-->0=h.&tie_to-->1;
+
+          } else {
+            i.&tie_to-->0=h.&tie_to-->1;
+          }
+          i.&tie_to-->1=0; h.&tie_to-->1=0;
+          i.prev=0; i.next=h; h.prev=i;
+        } else if(segment==h) {
+          i.&tie_to-->0=h.&tie_to-->0;
+          i.prev=0; i.next=h; h.prev=i;
+        } else if(segment==t) {
+          i.&tie_to-->0=t.&tie_to-->0;
+        } else {
+          return 0; ! not allowed to move a middle segment (which is tied down)
+        }
+        move i to new_pos;
+        return i;
+      }
+
+      ! no new segments available.
+      return 0;
+    ],
+    daemon [h t ph pt x s; ! called for the head_instance
+      ! Check if the object the rope is tied to has moved. In that case,
+      ! try to move the rope as well.
+      do {
+        s=0; x=0; h=self.head(); t=self.tail(); ph=superparent(h); pt=superparent(t);
+        if(h==t) {
+          ! Break ties if items have been removed from the game
+          if(h.&tie_to-->0 && parent(h.&tie_to-->0)==0) h.&tie_to-->0=0;
+          if(h.&tie_to-->1 && parent(h.&tie_to-->1)==0) h.&tie_to-->1=0;
+
+          ! Check if items tied to the rope has moved
+          if(h.&tie_to-->0 && superparent (h.&tie_to-->0)~=ph) {
+            s=self.move_rope(h, ph, superparent(h.&tie_to-->0));
+            if(s==0) {
+              x=h.&tie_to-->0; h.&tie_to-->0=0;
+            }
+          }
+          if(h.&tie_to-->1 && superparent(h.&tie_to-->1)~=ph) {
+            s=self.move_rope(h, ph, superparent(h.&tie_to-->1));
+            if(s==0) {
+              x=h.&tie_to-->1; h.&tie_to-->1=0;
+            }
+          }
+        } else {
+          ! Break ties if items have been removed from the game
+          if(h.&tie_to-->0 && parent(h.&tie_to-->0)==0) h.&tie_to-->0=0;
+          if(t.&tie_to-->0 && parent(t.&tie_to-->0)==0) t.&tie_to-->0=0;
+
+          ! Check if items tied to the rope has moved
+          if(h.&tie_to-->0 && superparent(h.&tie_to-->0)~=ph) {
+            s=self.move_rope(h, ph, superparent(h.&tie_to-->0));
+            if(s==0) {
+              x=h.&tie_to-->0; h.&tie_to-->0=0;
+            }
+          }
+          if(t.&tie_to-->0 && superparent(t.&tie_to-->0)~=pt) {
+            s=self.move_rope(t, pt, superparent(t.&tie_to-->0));
+            if(s==0) {
+              x=t.&tie_to-->0; t.&tie_to-->0=0;
+            }
+          }
+        }
+        ! Report breaking knot.
+        if(x) self.print_msg(self, msg_breaking, x);
+        
+        else if(s && parent(parent(player))~=0 && self.msg_vehicle_drag~=0) {
+          ! Automatic dragging of tied objects if in a vehicle that has moved.
+          t=0; do { h=s.pull_rope(true); if(h~=0 && h~=s) t=h; } until(h==0);
+          if(t) self.print_msg(self, msg_vehicle_drag, t, parent(player));
+        }
+      } until(x==0);
+    ],
+    ! ============ callbacks ================
+    before [i j;
+    Pull:
+      do {
+        i=self.pull_rope(true); if(j==0) j=i; else if(i~=0 && i~=self) j=i;
+      } until(i==0);
+      if(j==self) print_ret "You pull in the loose end of ", (the) self, ".";
+      else if(j) print_ret "You pull ", (the) self, ", dragging ", (the) j, " along.";
+    Take:
+      do {
+        i=self.pull_rope(false); if(j==0) j=i;
+      } until(i==0);
+      if(j) print "(pulling in some loose ", (name) self, " first)^^";
+    Tie:
+      if(self.dotie(second)) rtrue;
+      "Done.";
+    Untie:
+      i=self.head().&tie_to-->0;
+      if(self.head()==self.tail()) j=self.head().&tie_to-->1;
+      else j=self.tail().&tie_to-->0;
+      if(j==0 && i==0) print_ret (The) self, " isn't ", (string) self.msg_tiedto, "anything.";
+
+      if(self.dountie()) rtrue;
+      "Done.";
+    UntieObj:
+      if(self.dountieobj(second)) rtrue;
+      "Done.";
+    ],
+    react_before [x h t;
+    Examine:
+      if(metaclass(noun)~=Object) rfalse;
+      if(self.msg_examine1==0) rfalse;
+
+      x=0; h=self.head(); t=self.tail();
+      if(h==t) {
+        if(h.&tie_to-->0==noun || h.&tie_to-->1==noun) x=1;
+      } else {
+        if(h.&tie_to-->0==noun || t.&tie_to-->0==noun) x=1;
+      }
+      if(x) {
+        if(noun provides description) {
+          self.print_msg(noun, description);
+          self.print_msg(self, msg_examine2);
+        } else {
+          self.print_msg(self, msg_examine1);
+        }
+        new_line;
+        rtrue;
+      }
+    Go:
+      if(NestedIn(self, player)) {
+        self.floating=location;
+      }
+    ],
+    react_after [segment i1 i2 v1 v2;
+    Look:
+      if(self in player && msg_carry_connected~=0) {
+        if(self.head()==self.tail()) {
+          i1=self.head().&tie_to-->0; i2=self.head().&tie_to-->1;
+        } else {
+          i1=self.head().&tie_to-->0; i2=self.tail().&tie_to-->0;
+        }
+        if(i1) v1=TestScope(i1); else v1=0;
+        if(i2) v2=TestScope(i2); else v2=0;
+
+        if(v1 || v2) {
+          print "^"; self.print_msg(self, msg_carry_connected);
+          if(v1 && v2) print (the) i1," and ", (the) i2;
+          else if(v1) print (the) i1; else print (the) i2;
+          print ".^";
+        }
+      }
+    Go:
+      if(self.floating) {
+        segment=self.move_rope(self, self.floating, parent(self));
+        if(segment==0) {
+          self.print_msg(self, msg_tooshort);
+! Below is working code to drag dragable objects automatically when walking and holding a rope.
+! It is not used because this feature is probably not the wanted as default behavoiur.
+!        } else {
+!          do { i=segment.pull_rope(true); if(i~=0 && i~=segment) j=i; } until(i==0);
+!          if(j) print "(dragging ", (the) j, " along)^";
+        }
+        self.floating=0;
+      }
+    ],
+  ;
+
+Class ChainRope
+  class Rope with
+    name                "chain",
+    msg_examine1        0,
+    msg_describe        [;
+      print (The) self, " is here, connected";
+      if(location==PoultryHouse)  print " with the padlock";
+      print " to ";
+    ],
+!    msg_describe        [;  print (The) self, " is here, connected with the padlock to "; ],
+! "There is ", (a) self, " here, connected to "; ],
+    msg_tiedto          "connected to ",
+    msg_tie_description ". It is connected to ",
+    msg_description     [; 
+      if(self.is_in_window()) print "The chain is leading through the window";
+      else print "It's an ordinary looking ", (name) self, ", several metres long";
+    ],
+
+    is_in_window [;
+      if((parent(self.head())==FrontOfRavine && parent(self.tail())==PoultryHouse) ||
+         (parent(self.tail())==FrontOfRavine && parent(self.head())==PoultryHouse)) rtrue;
+      rfalse;
+    ],
+    before [x y;
+    PutOn: if(second==scooter) <<Tie noun second>>;
+    Pull:
+      if(self.is_connected(Grating))
+        "You pull the chain as hard as you can, but the grating doesn't move at all.";
+      rfalse;
+    Tie:
+      switch(second) {
+      Scooter: if(self.dotie(second)) rtrue;
+               "You hook up the chain to the scooter.";
+      Grating:
+               if(Testscope(Padlock)==false) {
+                 give self general;
+                 "You try to wrap the chain around the iron bars, but as soon as you take your \
+                 hands away the chain unwraps again.";
+               }
+               if(self.dotie(second)) rtrue;
+               give Padlock general;
+               give Padlock ~open;
+               move Padlock to PoultryHouse;
+                if(self hasnt general) "You wrap the chain around the iron bars, but as soon as you \
+                                                      take your hands away the chain unwraps again.  You solve this by \
+                                                      using the padlock.";
+               "Using the padlock, you attach the chain to the grating.";
+      default: "The chain is too unwieldy to be operated in that manner.";
+      }
+    UnTie, UntieObj:
+      if(Padlock has general && TestScope(Padlock) && second==0 or Grating) {
+        print "(opening the padlock first)^^";
+        give Padlock ~general;
+        give Padlock open;
+      }
+    ThrowAt:
+      if(player in Scooter) "Not while sitting on the scooter.";
+      if(second==DustyWindow) {
+!        if(DustyWindow hasnt open)
+!          "Throwing the chain at the window would certainly destroy it!";
+        if(player in PoultryHouse) {
+          x=PoultryHouse; y=FrontOfRavine;
+        } else {
+          x=FrontOfRavine; y=PoultryHouse;
+        }
+        if(self.move_rope(self, x, y)==0) {
+          ! Should never happen
+          "To your great surprise, you fail to throw the chain through the window.";
+        }
+        "You throw the chain through the window.";
+      }
+    ],
+  has weird;
+
+Class Room
+  with 
+    path_from 0,
+    path_dir 0,
+    path_length 0,
+    path_id 0,
+    cant_go [;
+      if(noun<u_obj && location provides cant_go_msg)
+        print_ret (string) location.cant_go_msg;
+
+      "You can't go that way.";
+    ],
+  has light;     
+
+Class SceneryContainer
+  ! Normally the contents of a container is not displayed 
+  ! This class fixes this.
+  !
+  with 
+    write_contents [ emptyflag premsg emptymsg   x any;
+      ! if emptyflag is false there is no output if the container is empty
+      ! premsg will be used instead of "There is ... in the X" if provided.
+      ! emptymsg will be used instead of "The X is empty." if provided.
+      ! return true if something written
+      if(self has open) {
+        objectloop(x in self)
+          if(x~=player) {
+            any=true;
+            give x workflag;
+          }
+        if(any) {
+          give player ~workflag;
+          if(premsg) {
+            print (string) premsg;
+            WriteListFrom(child(self), ENGLISH_BIT + RECURSE_BIT +
+                          WORKFLAG_BIT);
+            print ".";
+          } else {
+            print "There";
+            WriteListFrom(child(self), ENGLISH_BIT + RECURSE_BIT +
+                          WORKFLAG_BIT + ISAREONFIRST_BIT);
+            print " in ", (the) self, ".";
+          }
+        } else {
+          if(emptyflag) {
+            if(emptymsg) print (string) emptymsg;
+            else print (The) self, " is empty.";
+          } else
+            rfalse;
+        }
+        rtrue;
+      }
+      rfalse;
+    ],
+
+    describe [;
+      if(child(self) && self has open) rfalse;
+      rtrue;
+    ],
+    initial [; if(self.write_contents(true)) print "^"; ],
+    description [; 
+      if(self.write_contents(true)) print "^";
+      else print_ret "There is nothing special about ", (the) self, ".";
+    ],
+  has static container;
+
+Class ScenerySupporter
+  ! This class implements a hidden supporter. Any objects on the supporter
+  ! will be listed, otherwise the supporter is never mentioned.
+  !
+  with
+    write_contents [ isnl desctxt premsg   x any;
+      ! isnl: Write new-line? (TRUE or FALSE)
+      ! desctxt is a text to be written before the object list.
+      ! premsg will be used instead of "There is ... on the X" if provided.
+      ! return true if something written
+      objectloop(x in self)
+        if(x~=player) {
+          any=true;
+          give x workflag;
+        }
+      
+      if(any) {
+        give player ~workflag;
+        if(desctxt) print (string) desctxt, " ";
+        if(premsg) {
+          print (string) premsg;
+          WriteListFrom(child(self), ENGLISH_BIT + RECURSE_BIT +
+                        WORKFLAG_BIT);
+          print ".";
+        } else {
+          print "There";
+          WriteListFrom(child(self), ENGLISH_BIT + RECURSE_BIT +
+                        WORKFLAG_BIT + ISAREONFIRST_BIT);
+          print " on ", (the) self, ".";
+        }
+        if(isnl) print "^";
+        rtrue;
+      } else if(desctxt) {
+        print (string) desctxt;
+        if(isnl) print "^";
+        rtrue;
+      }
+      rfalse;
+    ],
+
+    description [; 
+      if(self.write_contents(TRUE)==FALSE) {
+        print_ret "There is nothing special about ", (the) self, ".";
+      }
+    ],
+  has scenery static supporter;
+
+Class SuperDoor
+  with
+    name "door",
+    short_name [  i;
+      for(i=n_obj:i<=sw_obj:i++)
+        if(location.i ofclass SuperDoor)
+          if(location.i~=self)
+              break;
+      if(i<=sw_obj && (i=self.door_dir())~=0) {
+        print (object) self," to the ",(address) i.&name-->1;
+        rtrue;
+      }
+    ],
+    parse_name [ i j m last last1 last2 d hasdir ok;
+
+      if(parser_action==##TheSame) return -2;
+
+      d=self.door_dir();
+      if(d>=n_obj && d<=sw_obj)
+        hasdir=true;
+      ok=true;
+      while((m=NextWordStopped())~=-1 && ok) {
+        for(j=self.#name-1:j>=0:j--)
+          if(m==self.&name-->j)
+            break;
+        if(j>=0 || (hasdir &&
+                    ((m==d.&name-->0 or d.&name-->1) ||
+                     (m=='to' && last~=0 or 'to' or 'the') ||
+                     m=='the'))) {
+          last2=last1;
+          last1=last;
+          last=m;
+          i++;
+              }
+        else
+          ok=false;
+      }
+      if(last=='the' or 'to') {
+        i--;
+        if(last1=='the' or 'to') {
+          i--;
+          if(last2=='the' or 'to') {
+            i--;
+          }
+        }
+      }
+      return i;
+    ],   
+    door_dir [  loc i; ! loc is an optional parameter
+      if(loc==0) loc=location;
+      for(i=n_obj:i<=sw_obj:i++)
+        if(loc.i==self)
+          return i;
+      return 0;
+    ],
+  has door openable static;
+
+Class DummyDoor
+  class SuperDoor,
+  with 
+    describe [;rtrue;],
+    description "This sturdy door is shut and locked.",
+  has lockable locked;
+
+Class AutoDoor
+  ! This class can be used to painlessly add doors in a game.
+  ! 
+  ! The player will automatically open closed (but not locked) doors,
+  ! and get standard responses.
+  !
+  ! The programmer doesn't have to do more than adding the door
+  ! object with found_in.
+  ! Example: AutoDoor CottageDoor "the door"
+  !          with found_in CottageKitchen CottageLivingroom;
+  class SuperDoor,
+  with 
+    describe [;rtrue;],
+    description [;
+      print "There is nothing special about ", (the) self, ". It is ";
+      if(self has locked) "locked.";
+      if(self hasnt open) "closed.";
+      "open.";
+    ],
+    door_to [  loc; ! Optional parameter to use instead of 'location'
+      if(loc==0) loc=location;
+      if(self.&found_in-->0==loc) return self.&found_in-->1;
+      return self.&found_in-->0;
+    ],
+    react_before [;
+    Go:
+      ! Skip this check if not in room (light) or on a veichle
+      if(parent(player) hasnt light && parent(player) hasnt switchable)
+        rfalse;
+
+      if(noun==self.door_dir() && self hasnt open) {
+        ! print "(opening the door first)^";
+        if(self has locked) {
+          if(self provides pass_door && self.pass_door(player, true)==true)
+            <Open self>;
+          else {
+            give tw_waiting on;
+            print_ret (The) self, " is locked!";
+          }
+        }
+        else {
+          <Open self>;
+!          give self open;
+          EndTurnSequence();
+          if(deadflag>0 || self hasnt open) rtrue;
+        }
+      }
+    ];
+
+Class AutoDoorWithLock
+  ! This class implements a door with the lock mounted on one side.
+  ! On that side the door can be (un)locked without a key, on the
+  ! other side a key must be used. Otherwise like AutoDoor.
+  !
+  class AutoDoor,
+  with
+    lock_side 0,  ! set this to the location of the lock.
+    before [;
+    Lock:
+      if(second==0 && location~=self.lock_side)
+        "The door can't be locked from this side without a key.";
+    Unlock:
+      if(location==self.lock_side)
+        "From this side the door can be unlocked without any implements.";
+    UnlockNoKey:
+      if(self hasnt locked) "The door is not locked anyway.";
+      if(location~=self.lock_side)
+        "The door can't be unlocked from this side without a key.";
+      give self ~locked;
+      "The door is now unlocked.";
+    ],
+  has lockable;
+
+Class AutoDesk
+  with 
+    name "oak" "desk" "drawer" "drawers",
+    before [ w1;
+     Search:
+      wn=2;
+      w1=NextWordStopped();
+      if(verb_word=='look' && (w1=='in' or 'into'))
+        "You can't open the drawers.";
+     Open, Close, Lock, Unlock:
+      "The drawers are closed and seem to like it that way.";
+    ],
+  has scenery enterable supporter;
+
+Class Liquid(1)
+  with
+    quantity 10, ! dl
+    liquidtype Liquid,   ! Only to have a default
+    simplename "liquid", 
+    disambiguate 0,
+    describe_liquid [ k p;
+      switch(self.quantity) {
+       0:
+        print "Actually, it's more of a wet spot"; ! Should never occur
+       1 to 3:
+        print "There's a few decilitres of it";
+       4 to 7:
+        print "There's about half a litre of it";
+       8 to 15:
+        print "There's about a litre of it";
+       16 to 39:
+        print "There's a few litres of it";
+       40 to 59:
+        print "There's about five litres of it";
+       60 to 75:
+        print "There's well over five litres of it";
+       76 to 125:
+        print "It's some ten litres or so";
+       126 to 590:
+        k=(self.quantity+30)/100;
+        if(k<2) k=2;
+        print "There must be about ",k*10," litres of it";
+       591 to 1100:
+        print "It's more than 50 litres";
+       default:
+              print "There's lots of it";
+      }
+      p=parent(self);
+      if(p has container) {
+        if(p.liquidspace==0)
+          ", completely filling up ",(the) parent(self),".";
+             k=self.quantity+p.liquidspace;
+        if(k>100)
+          k=self.quantity/(k/10);
+        else
+          k=(10*self.quantity)/k;
+        if(k<0) k=0;
+        switch(k) {
+         0:
+          ", barely wetting the bottom of ",(the) p,".";
+         1:
+          ", merely covering the bottom of ",(the) p,".";
+         2:
+          ", filling ",(the) p," to less than a quarter.";
+         3 to 4:
+          ", thus making ",(the) p," less than half-full.";
+         5 to 6:
+          ", making ", (the) p," just about half full.";
+         7 to 8:
+          ", leaving only a quarter of ",(the) p," empty.";
+         default:
+          ", almost filling ",(the) p," up completely.";
+        }
+      }
+      ".";
+    ],
+    before [ x y use p;
+     Drink:
+      if(self.quantity<=2) {
+        parent(self).liquidspace=parent(self).liquidspace+self.quantity;
+        move self to DestructionRoom;
+        print "Ok. Drunk.^";
+        if(parent(self) provides liquid_lost)
+          parent(self).liquid_lost(self);
+        rtrue;
+      }
+      self.quantity=self.quantity-2;
+      parent(self).liquidspace=parent(self).liquidspace+2;
+      print "You drink some ",(name) self,".^";
+      if(parent(self) provides liquid_lost)
+        parent(self).liquid_lost(self);
+      rtrue;
+     Take, Remove:
+      if(parent(self) ofclass Bottle && parent(self) hasnt static) {
+        print "(",(the) parent(self)," containing ",(the) self,")^";
+        <<Take (parent(self))>>;
+      }
+      else {
+        objectloop(x in player &&
+                   x ofclass Bottle && child(x)==nothing) use=x; 
+        if(use)
+          print "(putting it in ",(the) use,")^";
+        else {
+          print (The) self;
+          " is a liquid. You would need a container of some kind.";        
+        }
+      }
+      if(use)
+        <<TakeIn self use>>;
+     Insert:
+      p=parent(self);
+      if(self in second)
+        print_ret (The) self," is already in ",(the) second,".";
+      if(second==d_obj) {
+        x=TestScope(Blizzard);
+        y=parent(self);
+        if(y notin player)
+          "You must be holding ",(the) y," before you can empty it.";
+        if((~~x) && (TestScope(Petra) || TestScope(John) ||
+          TestScope(Williams) || TestScope(Schwartz) || TestScope(Henkel)))
+            "You feel a bit awkward pouring out ",(name) self," on the floor \
+              when someone is watching.";
+        y.liquidspace=y.liquidspace+self.quantity;
+        move self to DestructionRoom;
+        print "You pour ",(the) self," out";
+        if(x) print ".^";
+        else print " on the floor. It looks like someone didn't kick off the \
+          snow from their shoes before coming in.^";
+        if(p provides liquid_lost)
+          p.liquid_lost(self);
+        rtrue;
+      }
+      if(second ofclass AutoComputer)
+        "After the coffee incident, you have deduced that computers and ",
+          (string) noun.simplename, " don't mix either.";
+      if((second ofclass Bottle)==false)
+        print_ret "You should only pour ",(the) noun," into suitable containers.";
+      x=child(second);
+      if(x<1) {
+        ! Nothing in receiving container
+ 
+ ! PURLOIN GREEN BOTTLE AND BROWN. PUT WHISKY IN GREEN. PUT IT IN BROWN 
+!        x=Whisky.create(); ! UNSAFE, SHOULD CHECK IF AVAILABLE!!!
+        if((noun.liquidtype).remaining()<1) "SYSTEM ERROR #901";
+        x=(noun.liquidtype).create();
+!        (noun.liquidtype).recreate(x);
+!        Liquid.copy(x,noun);
+!        Whisky.copy(x,noun);
+        x.quantity=0;
+        move x to second;
+!        print noun.liquidtype, ":", x.liquidtype;
+!        <<Insert noun second>>; ! Recurse back to first case
+!        x=child(second);
+      }
+      if(x) {
+        if((x ofclass Liquid)==false)
+          "You'd just get ",(the) x," all wet.";
+        if(x.liquidtype~=self.liquidtype)
+          "That would create an odd mixture indeed."; !, (string) x.simplename;
+        if(second.liquidspace<1)
+          print_ret (The) second, " is already full.";
+        if(second.liquidspace<=self.quantity) {
+          print "You fill ",(the) second," with ",(name) self;
+          x.quantity=x.quantity+second.liquidspace;
+          self.quantity=self.quantity-second.liquidspace;
+          p.liquidspace=p.liquidspace+second.liquidspace;
+          second.liquidspace=0;
+          if(self.quantity==0)
+            move self to DestructionRoom;
+!           {
+!            x=parent(self);
+!            while(child(x))
+!              move child(x) to DestructionRoom;
+!          }
+          print ".^";
+          if(p provides liquid_lost)
+            p.liquid_lost(x);
+          if(second provides liquid_received)
+            second.liquid_received(x);
+          rtrue;
+        }
+        print "You put ",(the) self;
+        x.quantity=x.quantity+self.quantity;
+        second.liquidspace=second.liquidspace-self.quantity;
+        p.liquidspace=p.liquidspace+self.quantity;
+        print " held by ",(the) p," into ",(the) second,".";
+!        self.quantity=0;
+!            x=parent(self);
+!            while(child(x))
+!              move child(x) to DestructionRoom;
+        move self to DestructionRoom;
+!        (self.liquidtype).destroy(self);
+!        self.Liquid.destroy(self);
+        print "^";
+        if(p provides liquid_lost)
+          p.liquid_lost(x);
+        if(second provides liquid_received)
+          second.liquid_received(x);
+        rtrue;
+      }
+      
+     Transfer:
+      <<Insert noun second>>;
+    ],
+    react_before [;
+      self.disambiguate=0;
+    ],
+    react_after [;
+      self.disambiguate=0;
+    ],
+    short_name [;
+      print (string) self.simplename;
+      if(parent(self)<1 || self.disambiguate==0)
+        rtrue;
+      print " held by ",(the) parent(self);
+      rtrue;
+    ],  
+    parse_name [i p;
+      self.disambiguate=1;
+
+      if(parser_action==##TheSame) return -2;
+      if(self.&name==0) rfalse;
+      self.&name-->0=',x';
+      self.&name-->1=',x';
+      self.&name-->2=',x';
+      p=parent(self);
+      if(p>0)
+        for(i=p.#name/2-1 : i>=0 : i--)
+          self.&name-->i=p.&name-->i;
+      return NastyName(self,6);
+    ],
+    reset_prop [p;
+      self.(p)=self.(self.deducedtype)::(p);
+    ],
+    create [;
+    
+    ! ### This whole routine is a work-around due to what seems to be an Inform bug
+
+      if(self ofclass Whisky) self.deducedtype=Whisky;
+      else if(self ofclass Water) self.deducedtype=Water;
+      else if(self ofclass Tea) self.deducedtype=Tea;
+      else self.deducedtype=Liquid;
+
+      self.reset_prop(liquidtype);
+!      print self.quantity;
+      self.reset_prop(quantity);
+      self.reset_prop(simplename);
+!      self.reset_prop(article);
+!      print self.name;
+!      self.reset_prop(name);
+!      self.reset_prop(description);
+    ],
+    deducedtype Liquid,
+  has static;
+
+Class Water(10) ! (2 bottles + 1 glass + 1 tea kettle + 1 iron kettle + 3 taps + 1 sink)
+  class Liquid,
+  with 
+    liquidtype Water,
+    simplename "water",
+    article "some",
+    ! The six first names are reserved
+    name ",x" ",x" ",x" "held" "by" "the" "water" "some",
+    description [;
+      print "It's plain water. ";
+      self.describe_liquid();
+    ],
+    react_before [;
+      self.disambiguate=0;
+     Fill:
+      if(metaclass(noun)~=Object) rfalse;
+      if(second==0)
+        <<FillWith noun self>>;
+    ];
+
+Class Whisky(7) ! number of possible containers (2 bottles, 1 glass, 1 clay kettle, 1 iron kettle, 1 sink)
+  class Liquid,
+  with 
+    liquidtype Whisky,
+    quantity 5,
+    simplename "whisky",
+    article "some",
+    ! The six first names are reserved
+    name ",x" ",x" ",x" "held" "by" "the" "whisky" "some",
+    description [;
+      print "It's good whisky. Since no one has agreed to pay up, it doesn't \
+         have a brand. ";
+      self.describe_liquid();
+    ],
+    before [;
+      Drink: "This is not the right time to get drunk!";
+    ];
+
+Class Tea(7) ! number of possible containers (2 bottles, 1 glass, 1 clay kettle, 1 iron kettle, 1 sink)
+  class Liquid,
+  with 
+    liquidtype Tea,
+    simplename "tea",
+    article "some",
+    ! The six first names are reserved
+    name ",x" ",x" ",x" "held" "by" "the" "tea" "assam" "some",
+    description [;
+      print "It's an Assam tea, quite tasty at that. ";
+      self.describe_liquid();
+    ],
+    before [;
+     Drink:
+      "You are not thirsty.";
+    ];
+
+
+! A bottle may also provide a routine called liquid_received, which will
+! be run whenever the bottle has received a liquid. Similarily, it can
+! also choose to provide a routine called liquid_lost.
+
+Class Bottle
+  with
+    liquidspace 10, ! dl
+!    description [;
+!      if(child(self) ofclass Liquid)
+!        print_ret "In ",(the) self," is ", (the) child(self),"..";
+!      else
+!        print
+!          
+!    ],
+    before [;
+!    FillWith:
+!      if((second ofclass Liquid)==false)
+!        print_ret "You can only pour liquids into ", (the) noun, ".";
+!      if(child(self)) print_ret (The) noun, " is already full.";
+!      move second to noun;
+!      print_ret (The) noun, " now contains ", (the) second, ".";
+    LetGo:
+      if(child(self) ofclass Liquid)
+        "Holding a liquid in your bare hands would be a neat trick.";
+    Receive:
+      if((noun ofclass Liquid)==false) {
+        print (The) self;
+        " was not meant to contain much other than liquids.";
+      }
+      if(child(self)) 
+        print_ret (The) noun, " already contains something.";
+    ],
+    write_contents [ emptyflag premsg emptymsg   x any;
+      ! if emptyflag is false there is no output if the container is empty
+      ! premsg will be used instead of "There is ... in the X" if provided.
+      ! emptymsg will be used instead of "The X is empty." if provided.
+      ! return true if something written
+      if(self has open) {
+        objectloop(x in self)
+          if(x~=player) {
+            any=true;
+            give x workflag;
+          }
+        if(any) {
+          give player ~workflag;
+          if(premsg) {
+            print (string) premsg;
+            WriteListFrom(child(self), ENGLISH_BIT + RECURSE_BIT +
+                          WORKFLAG_BIT);
+            print ".";
+          } else {
+            print "In ", (the) self;
+            WriteListFrom(child(self), ENGLISH_BIT + RECURSE_BIT +
+                          WORKFLAG_BIT + ISAREONFIRST_BIT);
+            print ".";
+          }
+        } else {
+          if(emptyflag) {
+            if(emptymsg) print (string) emptymsg;
+            else print (The) self, " is empty.";
+          } else
+            rfalse;
+        }
+        rtrue;
+      }
+      rfalse;
+    ],
+    description [; 
+      if(self.write_contents(true)) print "^";
+      else print_ret "There is nothing special about ", (the) self, ".";
+    ],
+  has open container;
+
+Class Tap
+  with
+    liquidspace 0,
+    name "tap",
+    before [;
+     Examine, Search:;
+     Turn, Pull, Push, SwitchOn, SwitchOff: "To use the tap, \
+      just say what you want to accomplish, like ~drink some water~ \
+      or perhaps ~fill the glass with water.~";
+     default:
+      "It's a tap. It's there. Leave it be.";
+    ],
+    liquid_lost [ liq x;
+      if(child(self) ofclass Liquid) {
+!        print child(self).quantity;
+        child(self).quantity=10000;
+      } else {
+        x=(liq.liquidtype).create();
+        move x to self;
+        x.quantity=10000;
+      }
+    ],
+  has scenery static concealed transparent;
+
+!SceneryContainer -> Sink "sink"
+!  class Bottle,
+Class Sink
+  class Bottle
+  with
+    name "sink",
+    liquidspace 300,
+    liquid_received [  liq;
+          self.liquidspace=300;
+          move liq to DestructionRoom;
+          print_ret "^The ",(string) liq.simplename," runs down the drain.";  
+    ],
+  has static scenery;
+
+
+Class Burnable
+  with
+    ! ---- These variables can be customized
+    ! WARNING: don't refer to things as "lit X". Inform confuses this
+    ! with things providing light (such as the burning self).
+
+    no_burning_names 1,
+    extinguishable false,
+    will_burn_turns 2,
+    drop_before_burn true,
+    take_before_burn false,
+    takeable_while_burning false,
+    start_burn_msg [;
+      "You watch in amazement as ",(the) self, " catches fire. \
+        You never did know why you always feel like burning things, only \
+        that it makes you feel good.";
+    ],
+    burned_msg [;
+      print "^", (The) self," has been consumed by the fire and \
+            only ashes remain. That was a good burning, you \
+            think to yourself.^";
+    ],
+
+    ! ---- Internally used variables
+    parse_name [    n i j no_name no_burning_name;
+      if(parser_action==##TheSame) {
+        ! not same if name property different
+        if(parser_one.#name~=parser_two.#name) return -2;
+        for(i=parser_one.#name/2-1: i>=0: i--)
+          if(parser_one.&name-->i~=parser_two.&name-->i) return -2;
+
+        ! not same if burning status is different
+        if(parser_one.burning==parser_two.burning) return -1;
+        return -2;
+      }
+
+      no_name=0;
+      no_burning_name=0;
+      while((n=NextWordStopped())~=-1) {
+        for(i=(self.#name/2)-1: i>=self.no_burning_names: i--) {
+          if(n==self.&name-->i) {
+            ++no_name;
+            break;
+          }
+        }
+
+        for(j=self.no_burning_names-1: j>=0: j--) {
+          if(n==self.&name-->j) {
+            ++no_burning_name;
+            break;
+          }
+        }
+
+        if(j<0 && i<self.no_burning_names) break;
+      }
+
+      if(self.burning) {
+!        if(no_burning_name==0 && self provides plural) return 0;
+        return (no_burning_name+no_name);
+      } else {
+        if(no_burning_name>0) return 0;
+        return no_name;
+      }
+    ],
+    short_name [;
+      if(self.burning) print (address) self.&name-->0, " ";
+      rfalse;
+    ],
+    burning false,
+    triedplace 0,
+    turns_to_burn 0,
+    start_burn [;
+      StartDaemon(self);
+      self.burning=true;
+      give self light;
+    ],
+    stop_burn [;
+      StopDaemon(self);
+      self.burning=false;
+      give self ~light;
+    ],
+    daemon [x;
+      if((self.turns_to_burn--)<=0) {
+        self.stop_burn();
+        if(TestScope(self)) PrintOrRun(self, burned_msg);
+        while(child(self)>0)
+          move child(self) to parent(self);
+        remove self;
+        rtrue;
+      }
+      x=child(self);
+      while(x~=0 && ((x ofclass Burnable)==false || x.burning))
+        x=sibling(x);
+      if(x ofclass Burnable) {
+        print (The) x," catches fire!^";
+        if(x.turns_to_burn==0) x.turns_to_burn=x.will_burn_turns;
+        x.start_burn();
+      }
+    ],
+    before [x;
+     Take, Remove:
+      if(noun~=self) rfalse;
+      if(self.burning && self.takeable_while_burning==false)
+        "It's burning, mind you.";
+     Burn:
+      if(noun~=self) rfalse;
+      if(self.burning) print_ret (The) self," is already burning.";
+
+      if(second~=0) {
+        if(second~=CigaretteLighter && ((second ofclass Burnable)==false || second.burning==false))
+          print_ret "You can't use ", (the) second, " to ignite ", (the) self, ".";
+      }
+      else if(CigaretteLighter notin player)
+        "You're not holding anything that can ignite ",(the) self,".";
+      
+      x=0;
+      if(TestScope(ServiceMan)) x=ServiceMan;
+      if(TestScope(Petra)) x=Petra;
+      if(TestScope(John)) x=John;
+      if(TestScope(Williams)) x=Williams;
+      if(TestScope(Henkel)) x=Henkel;
+      if(TestScope(Schwartz)) x=Schwartz;
+      if(x) print_ret "With ", (the) x, " around, that could only serve to \
+        jeopardize your mission.";
+
+      x=parent(self);
+      while(x~=Fireplace or player or 0)
+        x=parent(x);
+      if(x==player && self.drop_before_burn) {
+        print "(dropping ",(the) self," first)^^";
+              keep_silent=true;
+              <Drop self>;
+              keep_silent=false;
+              x=parent(self);
+              while(x~=Fireplace or player or 0)
+          x=parent(x);
+      }
+      
+      if(TestScope(SmokeDetector)) {
+        self.start_burn_msg();
+        self.start_burn();
+        if(self.turns_to_burn==0) self.turns_to_burn=self.will_burn_turns;
+        rtrue;
+      }
+      if(x==0) { ! It is not in fireplace
+        if(self.triedplace~=parent(self)) {
+          self.triedplace=parent(self);
+          "I strongly recommend you not to start a fire here.";
+        }
+        print "Suit yourself. "; self.start_burn_msg(); 
+!        Startdaemon(self);
+!        self.burning=true;
+        self.start_burn();
+        if(self.turns_to_burn==0) self.turns_to_burn=self.will_burn_turns;
+        rtrue;
+      }
+
+      if(player in Fireplace && x==Fireplace)
+        "You'd better leave the fireplace first.";
+      ! Check if other things are in the fireplace
+      objectloop(x in FirePlace) {
+        if(x~=self && x~=IronKettle) 
+          print_ret "Surely you don't want to burn ", (the) x, "?";
+      }
+      if(self.take_before_burn && self notin player)
+        print_ret "You must be holding ",(the) self," to burn it.";
+
+      self.start_burn_msg();
+        
+      if(self.turns_to_burn==0) self.turns_to_burn=self.will_burn_turns;
+      self.start_burn();
+      rtrue;
+    Extinguish:
+      if(noun~=self) rfalse;
+      if(self.burning==false) print_ret (The) self, " is not burning anyway.";
+      if(self.extinguishable==false) rfalse;
+      print "You extinguish ", (the) self, ".^";
+      self.stop_burn();
+      rtrue;
+    ];
+
+Class Cigarette
+  class Burnable with
+    name "burning" "cigarette" "bent" "slightly" "camel",
+    burned_msg "^The cigarette burns out.",
+    extinguishable true,
+    will_burn_turns 10,
+    drop_before_burn false,
+    take_before_burn true,
+    takeable_while_burning true,
+    start_burn_msg [;
+      "You light ",(the) self, " and inhale deeply to make sure it stays lit.";
+    ],
+    short_name [  i onfire;
+      if(self.burning) print (address) self.&name-->0, " ";
+      else {
+        objectloop(i ofclass cigarette) 
+          if(TestScope(i) && i.burning) onfire=true;
+        if(onfire)
+          print "unlit ";
+      }    
+      print (address) (self.&name)-->self.no_burning_names;
+      rtrue;
+    ],
+    plural [;
+      if(self.burning) print (address) self.&name-->0, " ";
+      print (address) (self.&name)-->self.no_burning_names, "s";
+      rtrue;
+    ],
+
+    description [;
+      if(self.burning)
+        "The cigarette is burning, and provides a thin cloud of smoke.";
+      "The cigarette is slightly bent.";
+    ],
+    before [;
+    Smoke:
+      if(self.burning==false) "The cigarette isn't lit.";
+      if(self notin player) <Take self>;
+      if(self in player) "Terrible habit, but so hard to break...";
+    ];
+
+[ InitObjects  x a b c d;
+!  move LatestNews to CottageBedroom;
+  move Zipper to Trunk;
+  x=Water.create();
+  x.quantity=10000;
+  move x to KitchenSinkTap;
+  x=Water.create();
+  x.quantity=10000;
+  move x to BathroomTap;
+  x=Water.create();
+  x.quantity=10000;
+  move x to CottageTap;
+  x=Tea.create();
+  move x to TeaPot;
+  TeaPot.liquidspace=TeaPot.liquidspace-x.quantity;
+  x=Whisky.create();
+  move x to WhiskyBottle;
+  WhiskyBottle.liquidspace=WhiskyBottle.liquidspace-x.quantity;
+  while(a==b || a==c || a==d || b==c || b==d || c==d || d==666) {
+    a=random(999);
+    b=random(999);
+    c=random(999);
+    d=random(999);
+  }
+  ElectronicLock.&codes-->0=a;
+  ElectronicLock.&codes-->1=b;
+  ElectronicLock.&codes-->2=c;
+  ElectronicLock.&codes-->3=d;
+];
+
+
+

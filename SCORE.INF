@@ -1,0 +1,35 @@
+Constant MAX_SCORE 100;
+Constant TASKS_PROVIDED;
+Constant NUMBER_TASKS 19;
+Array task_scores -> 2 4 5 8 10 10 10 10 4 10 5 5 4 4 2 1 4 1 1;
+[ PrintTaskName ach;
+  switch(ach) {
+   0: "finding your wife's note";
+   1: "gaining access to the research centre";
+   2: "getting John drunk and learning a combination number";
+   3: "finding a combination number in the locked office";
+   4: "learning a combination number from the parrot";
+   5: "finding the combination number guarded by the dog";
+   6: "opening the security door";
+   7: "opening the iron door";
+   8: "protecting yourself from radioactivity";
+   9: "opening the grating in the poultry house";
+   10: "cleaning yourself after getting dirty";
+   11: "taking the sphere back to the aliens and saving your family";
+   12: "fooling Schwartz by manipulating the surveillance system";
+   13: "disabling the self-locking mechanism in the cellar storage room";
+   14: "picking the locked office door.";
+   15: "drinking whisky with Dr. Williams.";
+   16: "stealing whisky from Dr. Williams.";
+   17: "opening a secret door in the castle.";
+   18: "finding a key in a bird's nest.";
+  }
+];
+
+Constant AMUSING_PROVIDED;
+[ Amusing; DoMenu(AmusingItems, AmusingMenu, AmusingInfo); ];
+
+[ DeathMessage;
+  print "You have failed";
+];
+

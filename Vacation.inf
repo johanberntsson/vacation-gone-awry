@@ -1,0 +1,140 @@
+! VACATION GONE AWRY ( Previously called STRANDED)
+! Designed by Fredrik Ramsberg, Johan Berntsson & Staffan Friberg
+!
+! 1988: First design draft by Johan and Fredrik
+! 1989: First implemented in Rabies 1 on the C64 by Johan and Fredrik
+! 1990: Rewritten in Rabies 2 by Johan and Fredrik.
+! 1990: Ported, along with Rabies 2, to Amiga by Johan.
+!
+! 1994: Halfway ported to Common Lisp on PC by Johan.
+!
+! 1996 February 15: Porting to Inform on PC and Amiga begun by
+!                   Staffan and Fredrik.
+! 1996 October: Johan joins the porting group.
+! 1996 November 6: First complete version finished by Johan.
+! 1996 November 19: Some bugs fixed by Johan (bug1.txt, bug2.txt)
+! 1996 November 26: Lots of bugs fixed and the second test version 
+!                   created by Johan (bug3.txt, bug4.txt)
+! 1996 December 5: New debug verbs inserted, bugfixes (fdiff1.txt) by Fredrik.
+! 1997 February 17: The back door problem moved to cellar by Staffan.
+! 1997 April 4: Beta 3 released after many bug fixes.
+! 1997 July: new chain implementation, better PSI, many bug fixes by Johan.
+! 2000 October: A new start. Lots of bug fixes by Fredrik, Johan and Staffan.
+! 2001 August: Fredrik catches up with the changes submitted by Johan & Staffan.
+! 2001 December: Fredrik makes the game ready for a release
+! 2001 December 31: The game is finally released
+! 2002 January 30: Release 2
+! 2006 May 21: Release 3
+
+! Switches dv5s;
+Switches dv5se;
+
+!################# Include Abbreviations
+Include ">abbrev.inf";
+
+Constant Story="VACATION GONE AWRY";
+Constant Headline
+  " - An Interactive Story^\
+  Copyright (c) 1988-2006 by Johan Berntsson, Fredrik Ramsberg and Staffan Friberg.^^\
+  Please type ~help~ for instructions and license information.^";
+Release 3;
+
+!Constant DEBUG;
+Constant OWN_VERSION;
+
+!################# Include Scoring
+Include ">score.inf";
+
+#IFDEF DEBUG;
+  Message "DEBUG mode DEBUG mode DEBUG mode DEBUG mode DEBUG mode DEBUG mode !";
+#ENDIF;
+
+
+!################# Include Replace's
+Include ">replace.inf";
+
+!################# Include Statusline Utility and Parser
+Include "Status";
+Include "Parser";
+Include "Status2";
+
+!################# Include New Librarymessages Object
+Include ">libmsg.inf";
+
+!################# Include Sack Object
+Include ">sack.inf";
+
+!################# Include Verblib and Grammar
+Include "Verblib";
+Include "Grammar";
+
+!################# Include Debug Code
+#IFDEF DEBUG;
+Include ">debug.inf";
+#ENDIF;
+
+!################# Include New Definitions of Library Routines & General Funcs
+Include ">routines.inf";
+
+!################# Include Help
+Include ">help.inf";
+
+!################# Include New Grammar and Verb Definitions
+Include ">gram.inf";
+
+!################# Include Class Definitions
+Include ">classes.inf";
+
+!################# Include Comments system
+Include ">comments.inf";
+
+!################# Include Actors Definitions
+Include ">actors.inf";
+
+
+!################################---MAP---##################################
+
+!################# Include Cottage Area
+Include ">cottage.inf";
+
+!################# Include Cablecar Area
+Include ">cablecar.inf";
+
+!################# Include Research Centre Main Building
+Include ">centre.inf";
+
+!################# Include Outside Area & Living Quarters
+Include ">outside.inf";
+
+!################# Include Castle Area
+Include ">castle.inf";
+Include ">hoist.inf";
+
+!################# Include the video game (silly distraction)
+Include ">tetris.inf";
+
+!################################---INIT---##################################
+
+[ Initialise;
+  if((0->33)<60 || (0->32)<20) pretty_flag=0; else pretty_flag=1;
+
+  print "^^^^So, it's finally time again for the long awaited skiing holiday \
+    at your cabin in the Black Forest in Germany. You have worked hard the \
+    last few months at the office in Canberra and you don't mind leaving \
+    Australia for a while.^^Yesterday, you arrived in Germany and met up with \
+    your friend who lends you a car whenever you are here. The flight was \
+    terrible and the food worse. You have promised your wife and daughters \
+    that you'll try to change the return ticket to another airline. However, \
+    as you wake up the first morning at the cabin, you find that your family \
+    is gone...^^";
+
+  player=PlayerObject;
+  location = CottageBedroom;
+  InitPeople();
+  InitObjects();
+];
+
+Object DestructionRoom "Destruction Room"
+  with
+    description "This is where objects come to die."
+  has light;

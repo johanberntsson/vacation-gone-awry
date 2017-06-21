@@ -1,0 +1,1125 @@
+!################# Outside Area & Living Quarters Start
+
+Room Yard1 "Yard"
+  with 
+    description "You are in the southern part of a large yard. A thick \
+      layer of snow on the ground makes it somewhat difficult to walk. \
+      The back door of the main building lies to the south of you \
+      and another long building lies to the west. That house has an \
+      entrance to the southwest. There is an insignificant storage shed to \
+      the northeast and a twisty path leads southeast to an old poultry \
+      house. The yard  continues to the north.",
+    singledest 'yard',
+    before [x y;
+      Go:
+       if(noun==s_obj) {
+         y=0;
+         objectloop(x in player)
+            if(x provides dirty && x.dirty)
+              if((~~(x provides dirt_shows)) || x.dirt_shows())
+                ++y;
+         if(player.dirty==false && y==0 && IronKettle notin player) rfalse;
+
+         if(SignedPaper has general)
+           print "It was written in ",(the) SignedPaper, " that";
+         else if(WarningSign has general)
+           print "The signs on the sign-post said that";
+         else
+           print "The sign next to the castle \
+                 entrance says that";
+         print " the castle is off-limits and ";
+         if(player.dirty)
+           print "you are still very dirty after climbing the chimney";
+         else if(IronKettle in player)
+           print (the) IronKettle," will look out of place inside \
+                 the modern research centre";
+         else print "your clothes are dirty after climbing the chimney";
+
+         print ". Are you sure you want to enter the building?^^\
+               Please answer yes or no.> ";
+         if(YesOrNo()==false) {
+           META=1;
+           give tw_waiting on;
+           "Ok.";
+         }
+       }
+    ],
+    after [;
+     Go:
+      if(noun==n_obj) {
+        give BackDoor ~open;
+              print "^The door closes behind you.^";
+      }
+    ],
+    s_to BackDoor, n_to Yard2,
+    sw_to SCorridorDoor, se_to BeforePoultry, ne_to StorageDoor,
+    w_to "The house wall prevents you from going any further.",
+    cant_go_msg "The snow is too deep in that direction.",
+  has light;
+
+AutoDoor -> StorageDoor "storage shed door"
+  with
+    name "storage" "shed" "store",
+    parse_name [; return NastyName(self,2); ],
+        before [;
+    Open, Unlock:
+      Puzzles.PuzzleSeen(StoragePuzzle);
+    ],
+    after [;
+    Unlock:
+      Puzzles.PuzzleSolved(StoragePuzzle);
+    ],
+    with_key StorageKey,
+    found_in Yard1 Store,
+  has lockable locked;
+
+Object -> DummyStorage "storage shed"
+  with
+    found_in Yard1 Store,
+    name "storage" "shed",
+    description
+      "It is a small house of the type usually used for storing tools and junk in.",
+    before [;
+    Unlock: <<Unlock StorageDoor second>>;
+    Lock: <<Lock StorageDoor second>>;
+    Open: <<Open StorageDoor>>;
+    Close: <<Close StorageDoor>>;
+    ],
+  has scenery;
+
+Object -> DummyCentre "research centre building"
+  with
+    name "centre" "research" "main" "building" "house",
+    description
+      "The centre is a low, spacious building. The architecture \
+      is plain but functional.",
+  has scenery;
+
+Object -> DummyApartmentBuilding "long building"
+  with
+    found_in Yard1 Yard2 SCorridor NCorridor FrontOfShed Terrace DeadEnd,
+    name "apartment" "long" "building" "house",
+    description
+      "It is a long, low building containing containing apartments for \
+      researchers and other personel at the centre.",
+  has scenery;
+
+Room Store "In a Storage Shed"
+  with
+    description "This little shed is a storage \
+      of some kind. Lining the walls, there are piles of junk of all \
+      kinds. The lone exit is through the door to the south.",
+    singledest 'storage',
+    doubledest 'storage' 'shed',
+    namedest "Storage Shed",
+    s_to StorageDoor, out_to StorageDoor,
+    cant_go_msg "The only exit is through the door to the south.",
+  has light;
+
+Object -> StorageJunk "junk"
+  with
+    name "junk" "pile" "piles" "of" "all" "kinds",
+    article "some",
+    number 1,
+    before [;
+     Examine, Search:
+      switch(self.number++) {
+       1:
+              "You find a big rusty tool which you actually don't know what it is, \
+              but you remember always wanting one when you were a kid. Now that you \
+              find one, you decide not to keep it. It's funny what growing up does \
+              to you.";
+       2:
+        "Searching again, you find an old can opener. You put it back.";
+       3:
+        "Now this must be a propeller of some kind. As you can't think of \
+        any good reasons to bring it along, you put it back.";
+       4:
+        "You find an absolutely amazing thing which you don't know what \
+        it is. You feel certain that it has been very useful to someone. \
+        It's not much use to you though.";
+       5 to 10:
+        "You find nothing else of interest.";
+       11:
+        "I'm not kidding. There's nothing more to see among the junk.";
+       12:
+        "Really. There isn't.";
+       13:
+        self.number--;
+        "You find nothing else.";
+      }
+     default:
+      "It's just rubbish.";
+    ],
+  has scenery static concealed;
+
+Object -> Sack "sack"
+  with
+    name "thick" "paper" "aluminium" "garden" "waste" "sack",
+    initial "A sack, hanging from a peg, seems to be the most \
+            useable item here.",
+    description "The sack is made of thick paper, and it's internally \
+      covered with a thin foil of aluminum. There is some writing \
+      on its side which inform you that it's meant for containing \
+      garden waste, such as grass and so on.",
+    before [;
+    LetGo:
+      if(noun==Sphere && self hasnt general) {
+        give self general;
+        print "The sphere is radioactive and the sack protects \
+              you from the radiation. Do you really want to \
+              remove it from the sack?^^>>";
+        META=1; if(YesOrNo()==false) "Thought so.";
+      }
+    ],
+    after [;
+    Receive: if(noun==Sphere) Achieved(8);
+    ],
+  has container open;
+
+AutoDoor PoultryDoor "the poultry door"
+  with
+    name "poultry",
+    parse_name [; return NastyName(self); ],
+    found_in BeforePoultry PoultryHouse;
+
+Room BeforePoultry "By a Poultry House"
+  with
+    description "You are standing outside something that once was a \
+      poultry house. It has probably been deserted for a couple of years. \
+      An inviting door is east of you. Other exits are the paths leading \
+      northwest and southeast.",
+    e_to PoultryDoor, in_to PoultryDoor, nw_to Yard1, 
+    se_to FrontOfRavine,
+    cant_go_msg "The snow is of a different opinion.",
+  has light;
+
+Object -> DummyPoultry "poultry house"
+  with
+    found_in BeforePoultry PoultryHouse FrontOfRavine,
+    name "poultry" "house",
+    description
+      "The poultry house is long since deserted and in a state of decay.",
+  has scenery;
+
+Room FrontOfRavine "In Front of Ravine"
+  with
+    description
+      "This area is situated between the poultry house and a very deep \
+      ravine. In the brown wall of the house is set a small and dusty \
+      window. There is also a path heading off to the northwest.",
+    singledest 'ravine',
+    nw_to BeforePoultry,
+    s_to  "In the last moment, you discover that the ravine \
+           is in that direction. You figure that the fall would be \
+           more than enough to cause your death.",
+    cant_go_msg "You shouldn't be running off into nowhere, not with \
+      this weather and all.",
+    before [;
+    Exit: if(verb_word=='jump') <<Enter DummyRavine>>;
+    Jump: "If you want to end your life by jumping into the ravine, say so.";
+    ],
+  has light;
+
+Object -> DummyRavine "ravine"
+  with
+    name "ravine",
+    tries 0,
+    description
+      "Standing at the edge you peer down in the ravine, seeing nothing\
+      but snow and shadows. The ravine floor is not visible from here.",
+    before [;
+    Search: <<Examine noun>>;
+    Enter:
+      if((self.tries++)<1) "Suicidal.";
+      if(self.tries<3) "In fact, that'd be a really stupid move.";
+      deadflag=1;
+      "You decide to risk the fall after all. And fall you do.";
+    ThrownAt, Receive:
+      remove noun;
+      print_ret (The) noun, " falls down the ravine and disappears from view.";
+    JumpOver: "You know you could do it, but you'd probably crash into a pig \
+      in mid-air. Your mission is too important to take that risk.";
+    default: "What are you hoping to achieve?";
+    ],
+  has scenery container open;
+                
+Object -> DustyWindow "broken window"
+  with
+!    name "window" "small" "dusty",
+    name "window" "frame" "broken" "glass",
+    description [;
+!      print "A small, dusty window set in the ";
+      print "The glass is broken, and all that remains is a window frame \
+            set in the ";
+      if(location==PoultryHouse)
+        print "south wall. Looking through it you can see a small patch of \
+              ground before the ravine";
+      else
+        print "wall of the poultry house to the north. As you peer through the \
+              window, you see the poultry inside";
+      if(ChainA.is_in_window())
+        print ". The window is open and there is a chain running through it";
+      ".";
+    ],
+    Before [;
+      Close:
+        if(ChainA.is_in_window()) "Not without removing the chain.";
+      Enter:
+        "The window is far too small for you to get through.";
+      Receive: <<ThrowAt noun self>>;
+      ThrownAt:
+        if(self has open) {
+          if(location==PoultryHouse) move noun to FrontOfRavine;
+          else move noun to PoultryHouse;
+          print_ret (The) noun, " flies through the open window.";
+        } else {
+          print_ret "Throwing ", (a) noun,
+                    " at the closed window would certainly destroy it!";
+        }
+    ],
+    found_in FrontOfRavine PoultryHouse,
+  has concealed static openable container;
+
+Room PoultryHouse "In the Poultry House"
+  with
+    description [;
+      print "This house must have served as a poultry house before. There \
+      are still many nests, sitting pins and other traces of hens. None of \
+      them seem to be present, though. In the southern wall is set a small \
+      window, which lights up the room. There is a door in the western \
+      wall. ";
+      if(Grating in PoultryHouse)
+         "Another thing of note is a rusty grating, \
+         through which you can glimpse a dark room beneath.";
+      else "There is a hole in the floor, revealing a dark cellar.";
+    ],
+    before [;
+    Search, Examine:
+      if(noun==d_obj && Seeds has concealed) {
+        give Seeds ~concealed;
+        "You find a handful of seeds in the dust.";
+      }
+    ],
+    singledest 'poultry',
+    doubledest 'poultry' 'house',
+    namedest "Poultry House",
+    w_to PoultryDoor, out_to PoultryDoor,
+    d_to "Maybe if you were a fly.",
+    cant_go_msg "There's a wall in the way.",
+  has light;
+
+Object -> Seeds "handful of seeds"
+  with
+    name "seeds" "handful" "of",
+    after [;
+    Take, Remove: give self ~concealed;
+    Eat: "A bit stale, but still edible. \
+         Not enough to satisfy your appetite though.";
+    ],
+  has edible concealed;
+
+Object -> Grating "rusty grating"
+  with
+    name "rusty" "grating" "handle" "bars" "iron" "parallel",
+    description [;
+      print "The grating is made of parallel bars of iron, whose \
+      surface have been covered with rust over the years. There is a \
+      handle on one short side. It has probably been closed for decades";
+      if(ChainA.is_connected(Grating))
+         print ". A chain is connected to the grating with a padlock";
+      ".";
+    ],
+    before [;
+     Receive:
+      if(noun has huge) "There are probably more important things to \
+       do than that. ";
+      else "That could fall through the grating and you decide not to \
+       risk it.";
+     Burn:
+      if(CigaretteLighter notin player)
+       "You don't have anything with which to ignite ", (the) self, ".";
+      else
+       "After a few attempts the grating is slightly warm to the touch but \
+        no other effects can be seen.";
+     Take:
+      "It's rusted shut and you can't even begin to move it.";
+     Pull:
+      "You simply can't move it no matter how hard you try.";
+     Open:
+     Puzzles.PuzzleSeen(OpenGratingPuzzle);
+      "The grating is tightly shut and you can't open it no matter how \
+      hard you try.";
+     Unlock, PullWith:
+      if(second==ChainA && ChainA.is_connected(Grating))
+        "You pull as hard as you can, but you're not strong enough \
+          to even budge it.";
+      if(second==MetalBar or Bow)
+        "You put ", (the) second, " in a hole in the grating and heave \
+          your weight onto it, but when you feel ", (the) second ," starting \
+          to bend, the grating is still steady as a rock. \
+          You decide to spare ", (the) second ," in case you need it later. \
+          As far as the grating goes, your weight doesn't seem to accomplish \
+          much.";
+      "Try to be more specific.";
+     Tie: <<Tie second noun>>;
+     Search, LookUnder:
+      "Peering through the bars you can see a small cellar, whose floor is
+      only a metre and a half from the grating. \
+      It's a bit too dark to make out any details but there is something \
+      that could be an opening in the south wall of the room.";
+    ],
+  has static concealed;
+
+Object GratingHole "hole"
+  with 
+    name "grating" "hole",
+    description "The hole in the floor is about the size of the grating that \
+      covered it earlier. Through the hole you can see a small dark room.",
+    before [;
+     Enter:
+      <<Go d_obj>>;
+     Search:
+      "Looking down you see a small dark room, about two metres square and \
+      less than a metre and a half high. In the south wall a passage opens \
+      and leads onwards beyond your field of vision.";
+    ],
+  has static concealed;
+
+Room PoultryCellar "Dark Room"
+  with
+    description
+      "You are standing in a small dark room, scantily lit from 
+      the hole in the ceiling, leading up to the poultry house. There is a \
+      steep passage leading south and further down into darkness.",
+    u_to PoultryHouse, s_to StoneCorridor,
+    cant_go_msg "The mountain says you don't.",
+  has light;
+
+Room StoneCorridor "Stone Corridor"
+  with
+    description [;
+      if(IronDoor has open)
+        "This is a heavily sloping stone corridor which ends \
+        with a huge, open iron door to the south. Daylight and snow is \
+        streaming in through the doorway.";
+      "This is a heavily sloping stone corridor which ends \
+      with a huge iron door to the south. The only light comes from \
+      the hole in the floor of the poultry house to the north.";
+     ],
+    doubledest 'stone' 'corridor',
+    n_to PoultryCellar, s_to IronDoor,
+    cant_go_msg "Not likely unless you have a pick.",
+  has light;
+
+AutoDoor -> IronDoor "iron door"
+  with 
+    failures 0,
+    name "iron" "huge" "massive",
+    article "an",
+    description [;
+      if(self hasnt open) {
+        print "The door looks like it hasn't be opened for many decades. \
+          It is very rusty";
+        if(location==RavineFloor)
+          ".";
+        ", as is the little handle that is used to unlock it.";
+      }
+      "The door has swung wide open and seems to like it that way.";
+    ],
+    found_in RavineFloor StoneCorridor, 
+    before [;
+     KnockOn: "Despite the rusty looks, the door sounds solid enough.";
+     Close, Lock: if(self hasnt open) "That was easy. It's already closed.";
+       "As the door swung open, it must have passed a rough edge in the \
+       hinges or something, because it got stuck again, only this time \
+         fully open.";
+     Open, Unlock, Pull, Push, Turn, Remove, TakeIn, PullWith, TurnWith:
+      if(self has open)
+        "It's one heavy piece of iron. You seem to accomplish nothing.";
+      if(player in RavineFloor) {
+        if(action==##Push)
+          print "You push as hard as you can, but the door doesn't move at all";
+        else 
+          print "There is no sign of a handle, so you don't know how to get a grip on it";
+        ". Anyway, it looks frightfully heavy and more than a bit rusty.";
+      }
+      if(second==Wrench)
+        "You thought you had it figured out for a while, but \
+          unfortunately, ", (the) Wrench, " isn't helping much in getting \
+          a grip on the tubular handle.";
+      if(second==MetalBar) {
+        give self ~locked;
+        give self open;
+        move Handle to RavineFloor;
+        Achieved(7);
+        "You put the ironbar over the handle and tug at the bar as hard as \
+          you can. First, nothing happens. Then you tug harder, and the \
+          bar starts to bend. As you put all your weight and strength \
+          to the test, the handle suddenly gives way with a snap. Decades \
+          of rust fall to the floor in the form of flakes and dust as the \
+          handle swings around. After that, it turns out easier than \
+          you thought to push the door outwards. Fresh air greets you as \
+          the door swings open and crashes into the mountain side.";
+      }
+      if(second~=nothing)
+        "As it turns out, ", (the) second, " doesn't provide you with \
+          much of a grip on the tubular door handle.";
+      print "The door has not been opened for many decades. You tear at the \
+      little handle until your hands are sore, but the door is rusted shut \
+      and doesn't budge a millimeter.";
+      if(self.failures++==7)
+        " Problem is, the short handle doesn't allow you to apply neither \
+          your weight nor your strength without slipping.";
+      "";
+!     Close, Lock:
+!      if(self has open)
+!               "The door can't be closed again. It has been bent by the explosion.";
+    ],
+  has locked lockable;
+
+Object -> Handle "door handle"
+  with name "little" "door" "iron" "rather" "small" "round" "bar" "handle",
+    parse_name [; return NastyName(self,7); ],
+    describe [; rtrue; ],
+    before [;
+     Close, Lock:
+      <<Close IronDoor second>>;
+     Open, Unlock, Pull, Push, Turn, Remove, TakeIn, PullWith, TurnWith:
+      <<Open IronDoor second>>;
+    ],
+    description "It's a rather small handle, made from a solid round bar \
+      of iron, making it very difficult to get a proper grip and apply \
+      any real strength. On the other hand, it was probably quite \
+      sufficient when the door was new, recently lubricated and free of \
+      rust.",
+  has static;
+
+Room SCorridor "Corridor"
+  with
+    description "This is the southern part of a long corridor. There are \
+      doors set in the walls to the northwest, west and southwest of you. \
+      You can also leave this place through the doorway in \
+      the eastern wall, which leads out to the yard.",
+    namedest "Long Building",
+    singledest 'building',
+    doubledest 'long' 'building',
+    e_to SCorridorDoor, n_to NCorridor, sw_to HallDoor,
+    w_to SCorridor_w, nw_to SCorridor_nw,
+    cant_go_msg "There's a wall in the way.",
+  has light;
+
+DummyDoor -> SCorridor_nw "door";
+
+DummyDoor -> SCorridor_w "door";
+
+AutoDoorWithLock -> HallDoor "door"
+  with
+    lock_side Hall,
+    found_in SCorridor Hall,
+    before [;
+    KnockOn: if(location==SCorridor)
+               "The reply is a high-pitched cry.";
+    ];
+
+AutoDoor SCorridorDoor "door"
+  with
+    found_in SCorridor Yard1;
+
+Room Hall "Hall"
+  with
+    description "The yellow wallpaper gives an otherwise rather boring \
+      hallway a homelike atmosphere. There is a door to the east, \
+      as well as a doorway leading further into the apartment to the \
+      west.^^A somewhat whining voice, from within the apartment, greets \
+      you with the words ~Polly wanna cracker, Polly wanna cracker.~",
+    e_to HallDoor, w_to LivingRoom2,
+    cant_go_msg "You never could figure out why they have to put in all \
+    these walls.",
+  has light;
+
+Room LivingRoom2 "Living Room"
+  with
+    description "You have entered what appears to be a living room. To \
+      the west a great window overlooks huge amounts of snow. The only \
+      exit is to the east.",
+    namedest "The Parrot's Living Room",
+    singledest 'parrot',
+    doubledest 'parrots' 'room',
+    e_to Hall,
+    w_to "You can't get through the window. Anyway, it's not that inviting.",
+    cant_go_msg "You struggle for a while, but the wall wins.",
+
+  has light;
+
+Object -> ParrotWindow "window"
+  with
+    name "window" "great",
+    description
+      "There is nothing but snow outside the window.",
+  has static concealed openable locked;
+
+Object -> Packet "packet of cigarettes"
+  with
+    name "cigarette" "pack" "packet" "of" "battered" "camel",
+    parse_name [; return NastyName(self); ],
+    initial "Someone has tossed a packet of cigarettes on the floor.",
+    description "A somewhat battered packet of Camel. The \
+      lid has been torn off and the plastic wrapping is gone.",
+    before [;
+    Receive:
+      if(noun ofclass Cigarette) rfalse;
+      "The cigarette packet was only meant to contain cigarettes.";
+    ],
+  has container open;
+
+Cigarette -> ->;
+Cigarette -> ->;
+Cigarette -> ->;
+
+Object -> "branch"
+  with
+   name "sturdy" "wooden" "branch",
+   description
+     "The sturdy branch is mounted on the wall close to the window, \
+     providing a great look-out point for the parrot.",
+  has static concealed;
+    
+Room NCorridor "Corridor"
+  with
+    description "You are in the northern part of a long corridor. There \
+      are a number of doors set in the western wall. From where you are \
+      now, you have doors to the northwest, west and southwest. There is \
+      also a door leading east. Cold air is slipping in below it.",
+    e_to NCorridorDoor, s_to SCorridor, w_to DogHallDoor,
+    nw_to NCorridor_nw, sw_to NCorridor_sw,
+    cant_go_msg "A wall blocks your path.",
+
+    before [;
+    Go:
+      if(noun==s_obj or e_obj && DogHallDoor has open) {
+        print "Afraid that the dog might escape through the open door, \
+              you close it before you leave.^";
+         give DogHallDoor ~open;
+       }
+    ],
+  has light;
+
+DummyDoor -> NCorridor_nw "door";
+
+DummyDoor -> NCorridor_sw "door";
+
+AutoDoor NCorridorDoor "door"
+  with
+    found_in NCorridor Yard2;
+
+Room Yard2 "Yard"
+  with
+    description "This part of the yard has two paths leading from it, one \
+      to the east and one to the west. The long building can be entered \
+      to the southwest and, of course, the yard stretches southwards.",
+    s_to Yard1, e_to NarrowTrail, w_to FrontOfShed, sw_to NCorridorDoor,
+    cant_go_msg "The snow is too deep in that direction.",
+  has light;
+
+AutoDoor ToolShedDoor "toolshed door"
+  with
+    name "toolshed",
+    parse_name [; return NastyName(self); ],
+    after [;
+      Open:
+        print "You open ",(the) self,".^";
+          if(Toolshed.number>3) print "Ah! Fresh air! That's more like it.^"; 
+        Toolshed.number=0;
+        rtrue;
+    ],
+    found_in ToolShed FrontOfShed;
+
+Room FrontOfShed "In Front Of Shed"
+  with
+    description "The path that comes from the east ends at a toolshed to \
+      the north. The short side of the long house can be seen to the \
+      south, and west of it, an open field. In the snow, there is a trail \
+      leading southwest towards the building.",
+    after [;
+      Go, Drive:
+        if(Toolshed.number>3) print "Ah! Fresh air! That's more like it.^"; 
+      Toolshed.number=0;
+    ],
+    n_to ToolShedDoor, in_to ToolshedDoor,
+    sw_to Terrace, e_to Yard2,
+    cant_go_msg "The snow is too deep in that direction.",
+  has light;
+
+Object -> DummyToolshed "toolshed"
+  with
+    found_in FrontOfShed ToolShed,
+    name "toolshed" "shed",
+    description
+      "It is a small simple building for keeping tools and equipment in.",
+  has scenery;
+
+Room ToolShed "Toolshed"
+  with
+    number 0,
+    description "You have entered a small toolshed. It's quite dark in \
+      here, but in the shadows you can make out an old workbench, which \
+      appears to be the only piece of furniture in the room. You \
+      have the possibility of leaving through the door to the south.",
+    singledest 'toolshed',
+    s_to ToolShedDoor, out_to ToolShedDoor,
+    cant_go_msg "The walls aren't very sturdy in here, but sturdy enough.",
+    each_turn [;
+      if(Scooter in self && Scooter has on && ToolshedDoor hasnt open) {
+        ++self.number;
+        if(self.number>7) "^You feel very tired.";
+        if(self.number==5) "^You feel tired.";
+        if(self.number==3) "^You feel a bit tired.";
+      } else self.number=0;
+    ],
+    before [;
+    Sleep:
+      if(self.number>2 && Scooter in self && Scooter has on) {
+        deadflag=1;
+        "You fall fast asleep, never to wake up again. The scooter's \
+        exhaust fumes put you painlessly to death.";
+      }
+    ],
+  has light;
+
+Object -> Scooter "scooter"
+  with
+    name "scooter" "common" "hook" "seat" "controls" "simple",
+    description [;
+      if (self has general) {
+          "This is actually more a pile of garbage than a scooter \
+          now. It was not built to take this kind of fall.";
+      }
+      print "The scooter is a common model. It's open and is \
+            handled with simple controls. ";
+      if(ChainA.is_connected(Scooter))
+        print "A chain is connected to a hook, set behind the seat";
+      else 
+         print "There is a hook set behind the seat";
+      if (self has on)
+        print ". The engine emits a low and yet powerful humming";
+      ".";
+    ],
+    before [x;
+     Take, Remove: "This is not a toy, it's a real scooter. They are a bit \
+                   bigger than that.";
+     Transfer:
+       if(second==DummyRavine && location==FrontOfRavine) <<PushDir self s_obj>>;
+       "Futile.";
+     Push:
+       <<PushDir self s_obj>>;
+     PushDir:
+      if(scooter in FrontOfRavine && second==s_obj) {
+        if(player notin parent(scooter)) "You are hardly in a position to push it.";
+        ! Yihaaa... down the ravine
+        move self to RavineFloor;
+        give self general;
+        give self ~on;
+        print "With a little effort, you manage to push the scooter over \
+              the edge of the ravine.";
+        if(ChainA.is_connected(Scooter) && ChainA.is_connected(Grating)) {
+          Achieved(9);
+            print " With a bang the grating comes flying through \
+                the window, pulled by the chain, barely missing you.";
+            remove Grating;
+            remove Padlock;
+            ChainA.remove_self();
+            move GratingHole to PoultryHouse;
+            give GratingHole ~moved;
+            PoultryHouse.d_to=PoultryCellar;
+          } else if(ChainA.is_connected(Scooter)) ChainA.remove_self();
+        " You hear a muffled sound as the vehicle hits the rocks beneath.";
+      }
+      <<Pull self>>;
+     Turn, Pull:
+      "To make the scooter go someplace, just sit on it and \
+      drive. Driving a scooter is easy.";
+     Examine:
+      PrintOrRun(self,description);
+      rtrue;
+     SwitchOn:
+      if(self has general) ! Crashed
+        "You can't even find the starter button in the mess that used to be \
+        a scooter.";
+      if(self hasnt on) {
+        give self on;
+        "After a moment's hesitation, the scooter coughs and starts \
+        with a nice rumble.";
+      }
+     Go:
+      if(self hasnt on){
+        print "The engine isn't running.^";
+        return 2;
+      }
+      if((scooter in CastleEntrance && noun==nw_obj or ne_obj) ||
+         (scooter in BeforePoultry && noun==in_obj or e_obj) ||
+         (scooter in Yard1 && noun==s_obj or sw_obj) ||
+         (scooter in Terrace && noun==e_obj) ||
+         (scooter in Yard2 && noun==sw_obj)) {
+        print "Perhaps there are scooters for indoors usage. This isn't one.^";
+        return 2;
+      }
+      if(scooter in FrontOfRavine && noun==s_obj) {
+        ! Yihaaa... down the ravine
+        move player to parent(Scooter);
+        move self to RavineFloor;
+        give self general;
+        give self ~on;
+        print "Oops... there is the ravine. You manage to \
+              throw yourself off just in time but the scooter falls over \
+              the edge. ";
+        if(ChainA.is_connected(Scooter) && ChainA.is_connected(Grating)) {
+          Puzzles.PuzzleSolved(OpenGratingPuzzle);
+          Achieved(9);
+          print "With a bang the grating comes flying through \
+                the window, pulled by the chain, barely missing you. ";
+          remove Grating;
+          remove Padlock;
+          ChainA.remove_self();
+          move GratingHole to PoultryHouse;
+          give GratingHole ~moved;
+          PoultryHouse.d_to=PoultryCellar;
+          } else if(ChainA.is_connected(Scooter)) ChainA.remove_self();
+        print "You hear a muffled sound as the vehicle hits the rocks beneath.^";
+        return 2;
+      }
+      else if(ChainA.is_connected(Scooter) && ChainA.is_connected(Grating)) {
+          print "The chain stretches out. You can hear the engine roar as you \
+              give it full throttle, raising a cascade of snow behind you, \
+              but nothing else happens. The grating stays in place.^";
+        return 2;
+      }
+      x=parent(self).noun;
+      if(x ofclass Object && (parent(x)==0 ||
+                              (x ofclass AutoDoor && x has open)))
+        print "You give a little throttle and drive away to the ",
+          (address) noun.&name-->1,".^";
+      return 1;
+    Tie: <<Tie second noun>>;
+    ],
+  has switchable enterable static supporter open;
+
+Object -> Bench "workbench"
+  with
+    name "bench" "work" "workbench" "old",
+    description [;
+      print "It's just the good old-fashioned kind of workbench, with all \
+        sorts of gismos and thingies around the edges. It's a little dusty, \
+         so it probably hasn't been used for a while";
+      if(child(Bench)) {
+        print ". On the bench sits ";
+        WriteListFrom(child(Bench), ENGLISH_BIT + RECURSE_BIT);
+      }
+      ".";
+    ],
+  has scenery supporter;
+
+Room Terrace "Terrace"
+  with
+    description "You have come to a wide open space to the west of the \
+      long house. The heavy snow makes it difficult to walk, but you \
+      would probably make it a couple of meters further to the south, \
+      or northeast, to a snowed-in path. A window and a door is set in \
+      the wall to the east, and a sofa stands on the terrace extending \
+      from the house.",
+    singledest 'terrace',
+    number 0,
+    before [;
+     Go:
+       if(noun==ne_obj or s_obj && TerraceWindow has open) {
+         print "Afraid that an open window would attract unwanted attention, \
+               you close it before you leave.^";
+         give TerraceWindow ~open;
+       }
+     Enter:
+      if(player in Scooter)
+              "I don't think so, unless you get off the scooter first.";
+      if(noun==TerraceWindow && TerraceWindow hasnt open)
+        "The window isn't not open. You'd only hurt yourself.";
+    ],      
+    ne_to [;
+      StopDaemon(Dog);
+      return FrontOfShed;
+    ],
+    e_to [;
+      if(TerraceWindow has open) 
+      {
+              StartDaemon(Dog);
+        if(Meat in Terrace) give Meat general;
+              return TerraceWindow;
+      }
+      else
+        return TerraceDoor;
+    ],
+    s_to DeadEnd,
+    cant_go_msg "The snow is too deep in that direction.",
+    each_turn [;
+      if(self.number++>2) {
+        self.each_turn=$ffff;
+        if(DummyDog notin location)
+          "^There was something moving behind the panoramic window!";
+      }
+    ],
+  has light;
+
+! Can't use AutoDoor since e_to and w_to are functions
+Object -> TerraceDoor "terrace door"
+  with
+    name "terrace" "back" "door",
+    parse_name [; return NastyName(self, 2); ],
+    found_in Terrace OuterLivingroom,
+    door_to [; if(location==Terrace) return OuterLivingroom; return Terrace; ],
+    door_dir [; if(location==Terrace) return e_to; return w_to; ],
+    with_key 0,
+  has static door concealed openable lockable locked;
+
+Object -> TerraceWindow "panoramic window"
+  with
+    name "window" "panorama" "panoramic" "large",
+    describe [;rtrue;],
+    description [;
+      if(player in Terrace) {
+        print "Through the window you can see a living room";
+        if(Dog in OuterLivingroom) {
+          move DummyDog to Terrace;
+          print ". A mean looking Doberman stares back at you from the inside. \
+          You have a good hand with dogs, although you never know with \
+          unknown animals";
+        }
+        ".";
+      }
+      print "The window overlooks a snow covered terrace";
+      if(Dog in Terrace) print " and a vicious dog";
+      ".";
+    ],
+    before [;
+     Search: <<Examine self>>;
+     Receive: <<ThrowAt Meat self>>;
+     ThrownAt:
+      if(noun == Meat)
+        if(TerraceWindow has open) {
+          print "You throw the meat through the window and hear \
+            it land on the ";
+          if(location==Terrace) {
+            move Meat to OuterLivingroom;
+            "floor inside.";
+          }
+          give Meat general;
+          move Meat to Terrace;
+          "terrace outside.";
+        }
+      else {
+        move Meat to location;
+        print "The meat hits the window and falls to the ";
+        if(location==Terrace)
+          "ground.";
+        "floor.";
+      }
+    ],
+    door_to [;
+      if (player in Terrace)
+        return OuterLivingroom;
+      return Terrace;
+    ],
+    door_dir [;
+      if (player in Terrace)
+        return e_to;
+      return w_to;
+      ],
+    found_in Terrace OuterLivingroom,
+  has static door openable;
+
+ScenerySupporter -> OutsideSofa "sofa"
+  with
+    name "sofa" "wooden",
+    description [;
+      self.write_contents(TRUE,
+        "An ordinary wooden sofa. When the weather is better \
+              this is probably a nice place to spend an evening.");
+    ],
+  has enterable;
+
+Room OuterLivingRoom "Living Room"
+  with
+    description "This is a living room, containing all the things you \
+      normally find in living rooms. On the western wall is a \
+      large panoramic window, beside which you can see a door leading out \
+      to a terrace. You can also exit the room through the doorway to \
+      the east.",
+!    namedest "The Dog's Room",
+!    singledest 'dog',
+!    doubledest 'dogs' 'room',
+    before [;
+!     ThrowAt:;
+    ],
+    w_to [;
+      if(TerraceWindow has open)
+        return TerraceWindow;
+      else
+        "You can't, since the terrace door is in the way.";
+    ],
+    e_to [;
+      if(Dog in OuterLivingroom)
+        if(Overalls has worn) {
+          print "^Barking furiously the dog tries to prevent you from \
+            going away but its teeth come to shame on the coveralls.^";
+          return OuterHall;
+        }
+        else
+          if(Dog has general) {
+            give Dog ~general;
+            give Meat ~general;
+            "Suddenly the dog glances over its shoulder and sees \
+            you trying to sneak away. With a vicious bark it jumps away \
+            from the window and stands in your way.";
+          } else
+            "The dog watches you carefully and when you make a move \
+            towards the doorway it barks a warning making it perfectly \
+            clear that it won't let you go any further.";
+      else
+        return OuterHall;
+    ],
+    cant_go_msg "There's a wall there.",
+
+  has light;
+
+Object -> DummyTerrace "terrace"
+  with
+    name "terrace",
+    before [;
+    Examine: <<Examine TerraceWindow>>;
+    default:
+      "The terrace is behind the apartment. You can see it through the window.";
+   ],
+   has concealed static;
+
+Room OuterHall "Hall"
+  with
+    description "You are standing in a small hallway. The only piece of \
+      furniture is a rather large closet. There is a door to the east \
+      and to the west a doorway leads further into the apartment.",
+    w_to OuterLivingRoom, e_to DogHallDoor,
+    cant_go_msg "A wall stops you.",
+   has light;
+
+AutoDoorWithLock -> DogHallDoor "door"
+  with
+    lock_side OuterHall,
+    found_in NCorridor OuterHall,
+    before [;
+    KnockOn: if(location==NCorridor) "The reply is a furious bark.";
+    ],
+  has locked;
+
+SceneryContainer -> ClothesCloset "white closet"
+  with
+    name "closet" "white" "chipboard" "ikea",
+    description [;
+      print "The closet is a white painted chipboard construction \
+            from IKEA.";
+      self.write_contents(false, " It contains ", " It is empty");
+      print "^";
+    ],
+  has openable;
+
+Washable -> -> Overalls "coveralls"
+  with
+    name "coverall" "coveralls" "pair" "of",
+    article "a pair of",
+    description [;
+      print "You recognize the coveralls as the kind used by \
+            workers on oil platforms. They're very thick";
+      if(self.dirty==false) ".";
+      print " and ";
+      if(self.dirtyness==1)
+        "its arms are dirty.";
+      if(self.dirtyness==3)
+        "the top half is dirty.";
+      if(self.dirtyness==4)
+        "its legs are dirty.";
+      if(self.dirtyness==5)
+        "its arms and legs are dirty.";
+      "dirty all over.";
+    ],
+    layer 0,
+    leglayer 0,
+    make_dirty [   damage;
+      ! Dirtyness: 0=clean, 1=arms, 3=top, 4=legs, 5=arms&legs, 7=all dirty
+      damage=7;
+      if(TShirt in player && Tshirt has worn && Tshirt.layer>self.layer)
+        damage=damage & 5; ! Meaning the torso doesn't get dirty.
+      if(Sweater in player && Sweater has worn && Sweater.layer>self.layer)
+        damage=damage & 4; ! Meaning the torso and arms don't get dirty.
+      if(Jeans in player && Jeans has worn && Jeans.layer>self.leglayer)
+        damage=damage & 3; ! Meaning the legs don't get dirty.
+      self.dirtyness=self.dirtyness | damage;
+      if(damage>0) {     
+        self.dirty=true; self.soap_smell=false;
+      }
+    ],
+    dirt_shows [   damage;
+      if(self notin player || self hasnt worn) rtrue;
+      damage=self.dirtyness;
+      if(Sweater in player && Sweater has worn && Sweater.layer>self.layer)
+        damage=damage && 4; ! Only leg dirtyness may show
+      if(Jeans in player && Jeans has worn && Jeans.layer>self.leglayer)
+        damage=damage && 3; ! Only torso & arm dirtyness may show
+      if(damage>0)
+        rtrue;
+      rfalse;
+    ],
+    before [;
+     Disrobe:
+      if(Jeans in player && Jeans has worn && Jeans.layer>self.leglayer)
+        "Unless you take off the jeans first, that'd be difficult.";
+      if(TShirt in player && TShirt has worn && Tshirt.layer==self.layer+1)
+        "Remember putting the T-shirt on over the coveralls? I do.";
+      if(Sweater in player && Sweater has worn && Sweater.layer>self.layer)
+        "For reasons unknown, you are wearing your sweater over the coveralls.";
+    ],
+    after [x y;
+     Wear:
+      if(TShirt in player && Tshirt has worn) x=1;
+      if(Sweater in player && Sweater has worn) y=1;
+      self.layer = 1 + x + y;
+      x=0;
+      if(Jeans in player && Jeans has worn) x=1;
+      self.leglayer = 1 + x;
+    ],
+  has clothing;
+
+Room DeadEnd "Dead End"
+  with
+    description "Large drifts have been blown together at the wall to the \
+      east, making it impossible to continue further south. There is only \
+      unknown wilderness to the west, in which you have little or no \
+      interest. The only realistic alternative is going back the same \
+      way you got here.",
+    n_to Terrace,
+    cant_go_msg "There are massive snow drifts in all directions except \
+      to the north.",
+  has light;
+
+Room NarrowTrail "Narrow Trail"
+  with
+    description "A winding path leads northeast, up to a dark and \
+      deserted old stronghold, and west, down to the yard and the \
+      buildings surrounding it.",
+    w_to Yard2, ne_to NarrowTrack,
+    cant_go_msg "The snow is too deep in that direction. You can go \
+                west to the centre or north-east up to the castle.",
+  has light;
+
+Room NarrowTrack "Narrow Trail"
+  with
+    description "This is a narrow track leading north to the castle. To \
+      the west you can see the yard.",
+    w_to NarrowTrail, n_to BeforeCastle,
+    cant_go_msg "The track in the snow leads west back to the centre, \
+                or north to the castle.",
+  has light;

@@ -1,0 +1,478 @@
+Class Rope
+  ! Written by Johan Berntsson Apr 21, 1997. E-mail: johan@microheaven.com
+  ! 
+  ! A general rope routine. This rope can be tied to objects at both ends,
+  ! stretched over any number of rooms, pulled (possibly dragging non-static objects
+  ! along), etc.
+  !
+  ! Declare the rope with all segments but one as children of the first. Example:
+  !     Rope ->    Rope1a "rope" with name "rope";
+  !     Rope -> -> Rope1b "rope" with name "rope";
+  !     Rope -> -> Rope1c "rope" with name "rope";
+  !
+  ! Making a good rope is not trivial and there are certainly bugs left. If you find
+  ! any, please report this to me and I'll try to fix it. Try to reach me on
+  ! rec.arts.int-fiction if the e-mail address doesn't work.
+  !
+  with
+    ! =================================================================================
+    ! == Instances of this class can be connected to almost anything and all items   ==
+    ! == not nailed down can be dragged along. It is up to the subclasses/instances  ==
+    ! == to restrict this by providing before-routines for Tie, UnTie and UnTieObj   ==
+    ! =================================================================================
+    ! ==    The attributes below can be overridden to customize the instances.       ==
+    ! =================================================================================
+
+    name "end" "of",
+    ! NB: setting msg_examine1 to 0 disables the react-before/Examine routine
+    !     setting msg_vehicle_drag to 0 disables automatic pulling of small object by vehicles
+    !
+    msg_examine1        [; print "Except for ", (the) self, " being tied to it, \
+                                 you see nothing special about ", (the) noun, "."; ],
+    msg_examine2        [; print " There is ", (a) self, " tied to it."; ],
+    msg_tooshort        [; print (The) self, " is too short and you have to \
+                                 leave it behind.^"; ],
+    msg_describe        [;  print "There is ", (a) self, " here, tied to "; ],
+    msg_description     [; print "It's an ordinary looking ", (name) self,
+                                 ", several metres long"; ],
+    msg_breaking        [x; print "^", (The) self, " breaks free from ", (the) x, ".^"; ],
+    msg_vehicle_drag    [x y; print "^", (The) x, " is here, dragged along by ", (the) y, ".^"; ],
+    msg_tie_description ". It is tied to ",
+    msg_carry_connected [; print "You are holding ", (a) self,
+                                 ", which is connected to ";],
+
+    ! The message(s) below can only be strings.
+    msg_tiedto          "tied to ",
+
+    ! ========= Internally used variables, don't manipulate them. ===========
+    init                false,
+    floating            false,
+    tie_to              0 0,
+    next                0,
+    prev                0,
+    next_instance       0,
+    prev_instance       0,
+
+    ! ===================== Init and information routines ================
+    add_to_scope [x;
+      if(self.init==false) {
+        ! Init the rope and its additional rope segments (children)
+        while(children(self)>0) {
+          x=child(self);
+          x.next_instance=self.next_instance;
+          x.prev_instance=self;
+          if(self.next_instance~=0) self.next_instance.prev_instance=x;
+          self.next_instance=x;
+          x.init=true;
+          remove x;
+        }
+        StartDaemon(self);
+        self.init=true;
+      }
+    ],
+    dump [x;
+      print "DUMP - Class Rope: all segments:^";
+      for(x=self.head_instance(): x~=0: x=x.next_instance) {
+        if(x==self) print "* "; else print "  ";
+        print (name) x, "(", x, ") in ", (the) parent(x),
+              ". Tied to ", (a) x.&tie_to-->0, " and ", (a) x.&tie_to-->1, ".^";
+      }
+      print "------------------ used segments:^";
+      for(x=self.head(): x~=0: x=x.next) {
+        print "  ", (name) x, "(", x, ") in ", (the) parent(x),
+              ". Tied to ", (a) x.&tie_to-->0, " and ", (a) x.&tie_to-->1, ".^";
+      }
+    ],
+    describe [i1 i2 v1 v2;
+      if(self.head()==self.tail()) {
+        i1=self.head().&tie_to-->0; i2=self.head().&tie_to-->1;
+
+      } else {
+        i1=self.head().&tie_to-->0; i2=self.tail().&tie_to-->0;
+      }
+      if(i1) v1=TestScope(i1); else v1=0;
+      if(i2) v2=TestScope(i2); else v2=0;
+
+      if(v1 || v2) {
+        print "^"; self.print_msg(self, msg_describe);
+        if(v1 && v2) print (the) i1," and ", (the) i2;
+        else if(v1) print (the) i1; else print (the) i2;
+        ".";
+      }
+      rfalse;
+    ],
+    invent [i1 i2;
+      if(self.head()==self.tail()) {
+        i1=self.head().&tie_to-->0; i2=self.head().&tie_to-->1;
+      } else {
+        i1=self.head().&tie_to-->0; i2=self.tail().&tie_to-->0;
+      }
+      if(inventory_stage==2 && (i1 || i2)) {
+        print " (", (string) self.msg_tiedto;
+        if(i1 && i2) print (a) i1, " and ", (a) i2;
+        else if(i1) print (a) i1; else print (a) i2;
+        print ")";
+      }
+    ],
+    description [i1 i2;
+      self.print_msg(self, msg_description);
+      if(self.head()==self.tail()) {
+        i1=self.head().&tie_to-->0; i2=self.head().&tie_to-->1;
+      } else {
+        i1=self.head().&tie_to-->0; i2=self.tail().&tie_to-->0;
+      }
+      if(i1 || i2) {
+        self.print_msg(self, msg_tie_description);
+        if(i1 && i2) print (a) i1, " and ", (a) i2;
+        else if(i1) print (a) i1; else print (a) i2;
+      }
+      ".";
+    ],
+    print_msg [obj prop arg1 arg2 a;
+      ! New PrintOrRun - this version does not print unwanted new-lines
+      a=self; self=obj;
+      switch(ZRegion(obj.prop)) {
+      2: indirect(obj.prop, arg1, arg2);
+      3: print (string) obj.prop;
+      }
+      self=a;
+    ],
+
+    ! ================ Rope manipulation routines ================
+    head_instance [x; x=self; while(x.prev_instance~=0) x=x.prev_instance; return x; ],
+    tail_instance [x; x=self; while(x.next_instance~=0) x=x.next_instance; return x; ],
+    find_free_segment [x;
+      for(x=self.head_instance(): x~=0: x=x.next_instance) if(parent(x)==0) return x;
+      return 0;
+    ],
+    head [x; for(x=self.head_instance():x~=0:x=x.next_instance) if(x.prev==0 && parent(x)~=0) return x; ],
+    tail [x; for(x=self.tail_instance():x~=0:x=x.prev_instance) if(x.next==0 && parent(x)~=0) return x; ],
+    find_local_segment [loc x;
+      for(x=self.head(): x~=0: x=x.next) if(NestedIn(x, loc)) return x;
+      return 0;
+    ],
+    is_connected [obj h t; ! rtrue if obj connected to rope
+      h=self.head(); t=self.tail();
+      if(h==t) { if(h.&tie_to-->0==obj ||  h.&tie_to-->1==obj) rtrue;
+      } else     if(h.&tie_to-->0==obj ||  t.&tie_to-->0==obj) rtrue;
+      rfalse;
+    ],
+    remove_self [x;
+      for(x=self.head_instance(): x~=0: x=x.next_instance) {
+        remove x;
+        StopDaemon(self);
+      }
+    ],
+    dragable [obj;
+      if(obj has static) rfalse;
+      if(obj has scenery) rfalse;
+      rtrue;
+    ],
+    pull_rope [pull_objects h t x;
+      ! return 0 if can't move rope. self if rope moved. object# if object dragged.
+      x=self; h=self.head(); t=self.tail();
+      if(h==t) rfalse;
+      
+      if(self.prev~=0 &&
+         (h.&tie_to-->0==0 || (pull_objects && self.dragable(h.&tie_to-->0)))) {
+        ! drag small objects along
+        if(h.&tie_to-->0) {
+          x=h.&tie_to-->0;
+          move h.&tie_to-->0 to superparent(h.next);
+        }
+        ! update tie_to propery
+        if(self==t && self.prev==h) {
+          if(self.&tie_to-->0) self.&tie_to-->1=h.&tie_to-->0;
+          else self.&tie_to-->0=h.&tie_to-->0;
+        } else h.next.&tie_to-->0=h.&tie_to-->0;
+        ! remove the head
+        h.next.prev=0; remove h;
+        return x;        
+      }
+      if(self.next~=0 &&
+         (t.&tie_to-->0==0 || (pull_objects && self.dragable(t.&tie_to-->0)))) {
+        ! drag small objects along
+        if(t.&tie_to-->0) {
+          x=t.&tie_to-->0;
+          move t.&tie_to-->0 to superparent(t.prev);
+        }
+        ! update tie_to propery
+        if(self==h && self.next==t) {
+          if(self.&tie_to-->0) self.&tie_to-->1=t.&tie_to-->0;
+          else self.&tie_to-->0=t.&tie_to-->0;
+        } else t.prev.&tie_to-->0=t.&tie_to-->0;
+        ! remove the tail
+        t.prev.next=0; remove t;
+        return x;
+      }
+      rfalse;
+    ],
+    dotie [obj h t;
+      ! Avoid messy situations
+      if(obj==0 or player) "You would achieve nothing by this.";
+      if(obj ofclass Rope) "You would achieve nothing by this.";
+
+      while(self.pull_rope(false));
+
+      ! Check if there is a free end of the rope
+      h=self.head(); t=self.tail();
+      if(h==t) { ! only one segment
+         if(h.&tie_to-->0==0 && TestScope(h)) {
+           h.&tie_to-->0=obj;
+         } else if(h.&tie_to-->1==0 && TestScope(h)) {
+           h.&tie_to-->1=obj;
+         } else "There is no free ", (name) self, " end here."; 
+      } else { ! Several segments
+         if(h.&tie_to-->0==0 && TestScope(h)) {
+           h.&tie_to-->0=obj;
+         } else if(t.&tie_to-->0==0 && TestScope(t)) {
+           t.&tie_to-->0=obj;
+         } else "There is no free ", (name) self, " end here."; 
+      }
+
+      rfalse;
+    ],
+    dountie [i1 i2;
+      i1=self.head().&tie_to-->0;
+      if(self.head()==self.tail()) i2=self.head().&tie_to-->1;
+      else i2=self.tail().&tie_to-->0;
+
+      if(i1 && TestScope(i1)) if(self.dountieobj(i1)) rtrue;
+      if(i2 && TestScope(i2)) if(self.dountieobj(i2)) rtrue;
+      rfalse;
+    ],
+    dountieobj [obj h t;
+      if(TestScope(obj)==false) print_ret "You can't reach ", (the) obj, " from here.";
+  
+      h=self.head(); t=self.tail();
+      if(h==t) {
+        if(h.&tie_to-->0==obj) h.&tie_to-->0=0;
+        else if(h.&tie_to-->1==obj) h.&tie_to-->1=0;
+        else print_ret (The) self, " is not ", self.msg_tiedto, (the) obj, ".";
+      } else {
+        if(h.&tie_to-->0==obj) h.&tie_to-->0=0;
+        else if(t.&tie_to-->0==obj) t.&tie_to-->0=0;
+        else print_ret (The) self, " is not ", self.msg_tiedto, (the) obj, ".";
+      }
+      rfalse;
+    ],
+    move_rope [segment old_room new_pos new_room h t i j;
+      ! segment is segment to move.
+      ! old_room is the *room* where the rope is now
+      ! new_pos is the *position* in the *new* room where you want to put the rope
+      !
+      ! RETURN VALUES: 0=leaving rope. >0=new segment
+      ! Collect all loose ends
+      while(self.pull_rope(false));
+
+      ! Default is that the current segment mustn't leave its place.
+      move segment to old_room;
+      
+      ! Init some variables
+      new_room=superparent(new_pos);
+      h=self.head(); t=self.tail();
+
+      ! If only one segment long; and all tied ends have moved to new_room or not
+      ! tied at all, then move the rope as well.
+      if(h==t) i=true; else i=false;
+      if(i && h.&tie_to-->0 && superparent(h.&tie_to-->0)~=new_room) i=false;
+      if(i && h.&tie_to-->1 && superparent(h.&tie_to-->1)~=new_room) i=false;
+      if(i) {
+        move segment to new_pos;
+        return segment;
+      }
+
+      ! prevent if only one segment long and all ends tied down
+      ! (but not if tied at items I carry or am carried in)
+      if(h==t) {
+        for(j=player: parent(parent(j))~=0: j=parent(j));
+        if(h.&tie_to-->0 && h.&tie_to-->1) {
+          if(h.&tie_to-->0~=j && NestedIn(h.&tie_to-->0, j)==false &&
+             h.&tie_to-->1~=j && NestedIn(h.&tie_to-->1, j)==false) {
+            return 0;
+          }
+        }
+      }
+
+      ! Is there another segment of the rope present at the new location?
+      i=self.find_local_segment(new_room);
+      if(i~=0) {
+        move i to new_pos;
+        return i;
+      }
+ 
+      ! Try to get a segment which is not currently used.
+      i=self.find_free_segment();
+      if(i) {
+        if(h==t && segment==h) {
+          ! Only one segment
+          if(h.&tie_to-->0 && TestScope(h.&tie_to-->0)) { ! *not* ==false)
+            ! Tied to something which hasn't moved away
+
+            ! ========= old (wrong?) code
+            !i.&tie_to-->0=h.&tie_to-->0;
+            !h.&tie_to-->0=h.&tie_to-->1;
+            ! ========= new code
+            i.&tie_to-->0=h.&tie_to-->1;
+
+          } else {
+            i.&tie_to-->0=h.&tie_to-->1;
+          }
+          i.&tie_to-->1=0; h.&tie_to-->1=0;
+          i.prev=0; i.next=h; h.prev=i;
+        } else if(segment==h) {
+          i.&tie_to-->0=h.&tie_to-->0;
+          i.prev=0; i.next=h; h.prev=i;
+        } else if(segment==t) {
+          i.&tie_to-->0=t.&tie_to-->0;
+        } else {
+          return 0; ! not allowed to move a middle segment (which is tied down)
+        }
+        move i to new_pos;
+        return i;
+      }
+
+      ! no new segments available.
+      return 0;
+    ],
+    daemon [h t ph pt x s; ! called for the head_instance
+      ! Check if the object the rope is tied to has moved. In that case,
+      ! try to move the rope as well.
+      do {
+        s=0; x=0; h=self.head(); t=self.tail(); ph=superparent(h); pt=superparent(t);
+        if(h==t) {
+          ! Break ties if items have been removed from the game
+          if(h.&tie_to-->0 && parent(h.&tie_to-->0)==0) h.&tie_to-->0=0;
+          if(h.&tie_to-->1 && parent(h.&tie_to-->1)==0) h.&tie_to-->1=0;
+
+          ! Check if items tied to the rope has moved
+          if(h.&tie_to-->0 && superparent (h.&tie_to-->0)~=ph) {
+            s=self.move_rope(h, ph, superparent(h.&tie_to-->0));
+            if(s==0) {
+              x=h.&tie_to-->0; h.&tie_to-->0=0;
+            }
+          }
+          if(h.&tie_to-->1 && superparent(h.&tie_to-->1)~=ph) {
+            s=self.move_rope(h, ph, superparent(h.&tie_to-->1));
+            if(s==0) {
+              x=h.&tie_to-->1; h.&tie_to-->1=0;
+            }
+          }
+        } else {
+          ! Break ties if items have been removed from the game
+          if(h.&tie_to-->0 && parent(h.&tie_to-->0)==0) h.&tie_to-->0=0;
+          if(t.&tie_to-->0 && parent(t.&tie_to-->0)==0) t.&tie_to-->0=0;
+
+          ! Check if items tied to the rope has moved
+          if(h.&tie_to-->0 && superparent(h.&tie_to-->0)~=ph) {
+            s=self.move_rope(h, ph, superparent(h.&tie_to-->0));
+            if(s==0) {
+              x=h.&tie_to-->0; h.&tie_to-->0=0;
+            }
+          }
+          if(t.&tie_to-->0 && superparent(t.&tie_to-->0)~=pt) {
+            s=self.move_rope(t, pt, superparent(t.&tie_to-->0));
+            if(s==0) {
+              x=t.&tie_to-->0; t.&tie_to-->0=0;
+            }
+          }
+        }
+        ! Report breaking knot.
+        if(x) self.print_msg(self, msg_breaking, x);
+        
+        else if(s && parent(parent(player))~=0 && self.msg_vehicle_drag~=0) {
+          ! Automatic dragging of tied objects if in a vehicle that has moved.
+          t=0; do { h=s.pull_rope(true); if(h~=0 && h~=s) t=h; } until(h==0);
+          if(t) self.print_msg(self, msg_vehicle_drag, t, parent(player));
+        }
+      } until(x==0);
+    ],
+    ! ============ callbacks ================
+    before [i j;
+    Pull:
+      do {
+        i=self.pull_rope(true); if(j==0) j=i; else if(i~=0 && i~=self) j=i;
+      } until(i==0);
+      if(j==self) print_ret "You pull in the loose end of ", (the) self, ".";
+      else if(j) print_ret "You pull ", (the) self, ", dragging ", (the) j, " along.";
+    Take:
+      do {
+        i=self.pull_rope(false); if(j==0) j=i;
+      } until(i==0);
+      if(j) print "(pulling in some loose ", (name) self, " first)^^";
+    Tie:
+      if(self.dotie(second)) rtrue;
+      "Done.";
+    Untie:
+      i=self.head().&tie_to-->0;
+      if(self.head()==self.tail()) j=self.head().&tie_to-->1;
+      else j=self.tail().&tie_to-->0;
+      if(j==0 && i==0) print_ret (The) self, " isn't ", (string) self.msg_tiedto, "anything.";
+
+      if(self.dountie()) rtrue;
+      "Done.";
+    UntieObj:
+      if(self.dountieobj(second)) rtrue;
+      "Done.";
+    ],
+    react_before [x h t;
+    Examine:
+      if(metaclass(noun)~=Object) rfalse;
+      if(self.msg_examine1==0) rfalse;
+
+      x=0; h=self.head(); t=self.tail();
+      if(h==t) {
+        if(h.&tie_to-->0==noun || h.&tie_to-->1==noun) x=1;
+      } else {
+        if(h.&tie_to-->0==noun || t.&tie_to-->0==noun) x=1;
+      }
+      if(x) {
+        if(noun provides description) {
+          self.print_msg(noun, description);
+          self.print_msg(self, msg_examine2);
+        } else {
+          self.print_msg(self, msg_examine1);
+        }
+        new_line;
+        rtrue;
+      }
+    Go:
+      if(NestedIn(self, player)) {
+        self.floating=location;
+      }
+    ],
+    react_after [segment i1 i2 v1 v2;
+    Look:
+      if(self in player && msg_carry_connected~=0) {
+        if(self.head()==self.tail()) {
+          i1=self.head().&tie_to-->0; i2=self.head().&tie_to-->1;
+        } else {
+          i1=self.head().&tie_to-->0; i2=self.tail().&tie_to-->0;
+        }
+        if(i1) v1=TestScope(i1); else v1=0;
+        if(i2) v2=TestScope(i2); else v2=0;
+
+        if(v1 || v2) {
+          print "^"; self.print_msg(self, msg_carry_connected);
+          if(v1 && v2) print (the) i1," and ", (the) i2;
+          else if(v1) print (the) i1; else print (the) i2;
+          print ".^";
+        }
+      }
+    Go:
+      if(self.floating) {
+        segment=self.move_rope(self, self.floating, parent(self));
+        if(segment==0) {
+          self.print_msg(self, msg_tooshort);
+! Below is working code to drag dragable objects automatically when walking and holding a rope.
+! It is not used because this feature is probably not the wanted as default behavoiur.
+!        } else {
+!          do { i=segment.pull_rope(true); if(i~=0 && i~=segment) j=i; } until(i==0);
+!          if(j) print "(dragging ", (the) j, " along)^";
+        }
+        self.floating=0;
+      }
+    ],
+  ;
+
+

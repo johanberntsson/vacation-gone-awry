@@ -1,0 +1,20 @@
+! Included before 'Include "Parser";'
+
+Replace JumpSub;
+Replace ChooseObjects;
+Replace PrintRank;
+Replace InsertSub;
+Replace ScoreSub;
+Replace BeforeParsing;
+Replace EatSub;
+
+#IFDEF OWN_VERSION;
+Replace SearchScope;
+Replace TestScope;
+Replace ScopeWithin_O;
+Replace RTakeSub;
+Replace LookSub;
+Replace OpenSub;
+Replace HasLightSource;
+Replace WriteListR;
+#ENDIF;

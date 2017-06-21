@@ -1,0 +1,3048 @@
+! =========== PSI ACTORS =============
+
+! How many directions should be used for pathfinding (1-12)?
+! 4, 8, 10 and 12 are reasonable values. (4=only N,S,E,W)
+Constant SEARCHNRDIRS=10;
+
+
+[ MPD_CheckDirection person direction   loc dest exitval d;
+  ! return non-zero if possible (directly or through open door(=destination)
+  ! or by opening door first (=-destination)) to go in <direction> from loc
+
+  loc=superparent(person);
+  d=loc.direction;
+  if(metaclass(d)~=Object) return 0;
+  if(d ofclass Room) return d;
+
+  if(d has door && (dest=d.door_to(loc,true)) ofclass Room){
+    if(d provides pass_door)
+      exitval=d.pass_door(person);
+    else if(d has open)
+      exitval=dest;
+    else if(d hasnt locked)
+      exitval=-dest;
+    else ! Must be a locked door
+      if(loc==location)
+        print "^",(The) person," tries to open ", (the) d,
+          ", only to find it locked.^";
+  }
+  return exitval;
+];
+
+[ MovePersonDir person dir silent dest;
+  dest=MPD_CheckDirection(person, dir);
+  if(dest==true) rtrue; ! The movement succeeded, but we shall print nothing
+  Comments.make_busy(person);
+  if(dest) {
+!    print "YES! dest=",dest,"!^";
+    if(silent==false && TestScope(person)) {
+      if(dest<0)
+        print "^",(The) person," opens ",(the) superparent(person).dir,".^";
+      else
+        print "^",(The) person," walks ", (address) (dir.&name)-->1, ".^";
+    }
+    
+    if(dest>0) {
+      move person to dest;
+    } else {
+      if(person ofclass Walker)
+        person.mission_substep--;
+      give parent(person).dir open;
+!      move person to -dest;
+      rtrue;
+    }
+    if(silent==false && TestScope(person)) {
+      if(person provides introduction && person.introduction(true)) return true;
+      else print "^",(The) person," appears.^";
+    }
+    rtrue;
+  }
+ ! print "NO! dest=",dest,"!^";
+  rfalse;
+];
+
+[ SelectMission person t n i r nonnil;
+  if(person.mission_queue>0) {
+    r=person.mission_queue;
+    person.mission_queue=-1;
+  }
+  else {
+    t=person.#mission_list/2;
+    n=0; ! *** Sum of the weight of all possible missions
+    for(i=0:i<t:i=i+2)
+      if(person.&mission_list-->i>0 &&
+         person.&mission_list-->i~=person.last_mission)
+        nonnil++;
+    for(i=0:i<t:i=i+2)
+      if(person.&mission_list-->i &&
+         ((person.&mission_list-->i)~=person.last_mission || nonnil==1)) 
+        n=n+person.&mission_list-->(i+1);
+    if(n==0) {
+  !    print "^",(The) person,i," starts to walk but stops again.^";
+      rtrue;
+    }
+    r=random(n);
+  !  print (The) person,": Vald vikt: ",r," av totalt ",n," foerdelat paa ",
+  !    nonnil," uppdrag.^";
+    for(i=0:i<t:i=i+2) 
+      if((person.&mission_list-->i)~=person.last_mission || nonnil==1)
+        if((r=r-person.&mission_list-->(i+1))<1) break;
+    r=person.&mission_list-->i;
+  }
+!  print (The) person, " chooses mission ",r,"!^";
+  person.mission_nr=r;
+  person.last_mission=r;
+  person.mission_step=Mission_index-->r+1;
+  person.mission_substep=-1;
+  person.path_nr=-1;
+];
+
+[ EnqueueMission person mission;
+!  print (The) person, ": plans to do mission ",mission," soon!^";
+  person.mission_queue=mission;
+];
+
+Constant misTalkToHenkel 10;
+Constant misResearch 11;
+Constant misSnack 12;
+Constant misGotoWilliams 13;
+Constant misReadBook 14;
+Constant misGotoLoo 15;
+Constant misGotoCellarStore 16;
+Constant misGotoKitchen 17;
+Constant misGotoSchwartz 18;
+Constant misGotoJohn 19;
+Constant misGotoJohnSelf 20;
+Constant misGotoPetra 21;
+Constant misGotoPetraSelf 22;
+
+Constant Max_mission_tries 3;
+
+Constant actGoTo 1;
+Constant actWaitTurns 2;
+Constant actClose 3;
+Constant actLock 4;
+Constant actUnlock 5;
+Constant actPushOutAndClose 6;
+Constant actLeaveStore 7;
+
+Array Missions table
+[; 0;
+  misTalkToHenkel;
+    actGoTo Entrance;
+    actWaitTurns 2 5;
+    0;
+  misResearch;
+    actGoTo NLab;
+    actWaitTurns 3 7;
+    0;
+  misSnack;
+    actGoTo Kitchen;
+    actWaitTurns 6 7; 
+    actGoTo Dinnerhall;
+    actWaitTurns 6 8;
+    0;
+  misGotoWilliams;
+    actGoTo WilliamsOffice;
+    actWaitTurns 1 3;
+    0;
+  misGotoSchwartz;
+    actGoTo Office1;
+    actWaitTurns 1 4;
+    0;
+  misGotoJohn;
+    actGoTo JohnsOffice;
+    actWaitTurns 2 4;
+    0;
+  misGotoJohnSelf;
+    actGoTo JohnsOffice;
+    actWaitTurns 3 7;
+    0;
+  misGotoPetra;
+    actGoTo PetrasOffice;
+    actWaitTurns 2 4;
+    0;
+  misGotoPetraSelf;
+    actGoTo PetrasOffice;
+    actWaitTurns 3 7;
+    0;
+  misReadBook;
+    actGoTo Library;
+    actWaitTurns 5 8;
+    0;
+  misGotoLoo;
+    actGoTo Bathroom;
+    actPushOutAndClose;
+    actLock BathroomDoor;
+    actWaitTurns 2 8;
+    actUnlock BathroomDoor;
+    0;
+  misGotoCellarStore;
+    actGoTo CellarStore;
+    actWaitTurns 8 10;
+    actLeaveStore;
+    0;
+  misGotoKitchen;
+    actGoTo Kitchen;
+    0;
+  $ffff;
+];
+
+Array Mission_index table 100;
+
+Constant USEPATHTIMES 7;
+Constant PATHSTOSTORE=40;
+Constant PATHINDEXWORDS=5;! From, To, LastUsed, TimesUsed, SearchID
+Constant PATHINDEXSIZE=PATHINDEXWORDS*PATHSTOSTORE;
+Constant PATHMAXLENGTH=23; ! Including a trailing zero
+Constant PATHSPACESIZE=(PATHMAXLENGTH+1)*PATHSTOSTORE;
+Array Path_index-->PATHINDEXSIZE; 
+Array Paths->PATHSPACESIZE;
+
+
+Constant MAXQ 100;
+Array SearchQ --> MAXQ;
+global SearchID;
+global StartQ;
+global EndQ;
+
+[ FindPath a b act actloc i n k to d go z store p length;
+  ! Finds the nearest path from a to b, handling closed but not locked doors
+  ! of class AutoDoor. Can handle arbitrarily long paths. If PATHSTOSTORE
+  ! is less than the number of actors simultaneously following paths, the
+  ! program gets slow, but still works correct, assuming that the actors do
+  ! the mandatory path ID verification every turn.
+  
+  ! Uses breadth-first searching with a queue, and stores and retrieves the
+  ! PATHSTOSTORE most recently used paths. The path number and id is put in
+  ! the path-related properties of the object act. (usually an actor).
+
+  ! Notes: If there is no possible path, or the nearest path between the two
+  ! rooms is longer than PATHMAXLENGTH - 1, or the queue gets full, the
+  ! routine will not find a path, and return true.
+  ! Paths that are found obsolete by the NPC:s are discarded using KillPath(n)
+
+  #IFDEF DEBUG;
+  if(PathInfo) 
+  {
+    print "^Searching for a path for ",(name) act," from ",
+      (name) a, " to ", (name) b, ".^";
+    print "State before searching:^";
+    for(k=0:k<PATHSTOSTORE:k++)
+      print "Path #",k, " from ",(name) Path_index-->k, " to ",
+        (name) Path_index-->(k+PATHSTOSTORE), ". Used ",
+        Path_index-->(k+3*PATHSTOSTORE)," times, last: ",
+        Path_index-->(k+2*PATHSTOSTORE),".^";
+  }
+  #ENDIF;
+  
+  if((a ofclass Room)==false || (b ofclass Room)==false) {
+    #IFDEF DEBUG;
+    if(PathInfo) 
+      print "The Startlocation and/or Destination is not of class Room!^";
+    #ENDIF;
+    rtrue; 
+  }    
+
+  ! 'store' holds the oldest path this far, k holds the turn it was used
+  ! z holds the found path
+  k=turns+1;
+  store=-1;
+  z=-1;
+  for(i=0:i<PATHSTOSTORE:i++) 
+  {
+    if(Path_index-->(i+3*PATHSTOSTORE)>=USEPATHTIMES)
+      KillPath(i);
+    else if(act~=player) ! Never use stored path for player
+      if(Path_index-->i==a && Path_index-->(i+PATHSTOSTORE)==b) 
+      {
+        z=i;
+        break;
+      }
+    if(Path_index-->(i+2*PATHSTOSTORE)<k) 
+    {
+      store=i;
+      k=Path_index-->(i+2*PATHSTOSTORE);
+    }
+  }
+
+  #IFDEF DEBUG;
+  if(PathInfo) 
+  {
+    if(z>=0)
+      print "Retrieved the wanted path from slot #",z,"!^";
+    else 
+    {
+      if(store>=0) 
+        print "The oldest path is in slot #",store,".^";
+      else
+        print "Serious error: None marked as oldest, none found!^";
+    }
+  }  
+  #ENDIF;
+  
+  
+  if(z>=0) ! Give the actor info about the path he is on, and return
+  {
+    Path_index-->(z+2*PATHSTOSTORE)=turns; ! Update the last use of path.
+    (Path_index-->(z+3*PATHSTOSTORE))++; ! Update the number of times used.
+    act.path_nr=z; ! Lets the actor remember what path he is on...
+    act.path_id=Path_index-->(z+4*PATHSTOSTORE); ! ...and its SearchID
+    rfalse; ! All OK, returning
+  }
+
+  ! *** The sought path was not in store, so we have to find it, and store it.
+  
+  if(store<0) store=0;  ! This condition should never be true!!!
+!  temploc=location;     ! To be able to restore 'location' if we change it.
+  
+  if(++SearchID>255) 
+  {
+    SearchID=1;
+    objectloop(i ofclass Room)
+      i.path_id=0;
+  }
+
+  StartQ=0;
+  EndQ=1;
+  z=0;
+  SearchQ-->StartQ=a;
+  actloc=superparent(act);
+  length=0;
+  a.path_id=SearchID;
+  a.path_length=length;
+  a.path_from=0;
+  a.path_dir=0;
+  
+  .scan;
+  if(++n>200) { ! Any value higher than the number of legal rooms
+!    location=temploc;
+    "ERROR: Too many nodes! Call the programmer!!!^^^";
+  }
+  if(StartQ==EndQ) {! The Q is empty or full. If it is full, the Q is too small
+!    location=temploc;
+    #IFDEF DEBUG;
+    if(PathInfo)
+      "There is no path!!!^^^";
+    #ENDIF;
+    rtrue;
+  }
+  i=SearchQ-->StartQ;
+  if(StartQ++>MAXQ) StartQ=0;
+  
+  if(i==b)
+  { ! Maalnoden naadd!!!
+    i=store*PATHMAXLENGTH+b.path_length;
+    Paths->(i--)=0; ! Marks the end of the path
+    k=b;
+    while(k~=a)
+    {
+      Paths->(i--)=k.path_dir;
+      k=k.path_from;
+    }
+    Path_index-->(store)=a;
+    Path_index-->(store+PATHSTOSTORE)=b;
+    Path_index-->(store+2*PATHSTOSTORE)=turns; ! Update the last use of path.
+    Path_index-->(store+3*PATHSTOSTORE)=1; ! Set the number of times used.
+    Path_index-->(store+4*PATHSTOSTORE)=SearchID; ! Set the SearchID of path
+    act.path_nr=store; ! Lets the actor remember what path he is on...
+    act.path_id=SearchID; ! ...and its SearchID
+    
+    #IFDEF DEBUG;
+    if(PathInfo) 
+    {
+      print "Found a ",b.path_length," node(s) long path, checking ",n,
+        " nodes, ",z," directions and ",p,
+        " doors. The path was stored in slot #",store,".^";
+      
+      to=a;
+      print "Path: ";
+      for(k=store*PATHMAXLENGTH: Paths->k>0: k++) 
+      {
+        d=to;
+        to=to.(Paths->k);
+        print (address) (Paths->k).&name-->1;
+        if(to has door) 
+        {
+          print " through door #",to;
+          to=to.door_to(d,true); ! Fake location and keep quiet
+        }
+        if(to~=b)
+          print ", ";
+      }
+      print ".^";
+    }
+    #ENDIF;
+    rfalse;
+  }
+  
+  if(i.path_id~=SearchID)
+    "MAJOR SYSTEM ERROR!!!^^^"; ! Noden haar ej markerats som besoekt
+  if((length=i.path_length+1)>=PATHMAXLENGTH)
+    jump scan; ! Entering this node would mean a too long path.
+  for(d=7: d<7+SEARCHNRDIRS: d++) 
+  {
+    z++;
+    go=0;
+    if((to=i.d) ofclass Room && to.path_id~=SearchID &&
+       (act~=player || to has visited))
+      go=1;
+    else if((to ofclass AutoDoor) &&        ! Try to pass doors that are either
+            (i~=actloc || to hasnt locked || ! out of sight or unlocked, or say
+             (to provides pass_door && to.pass_door(act,true)))) ! it's OK.
+    {
+      p++;
+      to=to.door_to(i,true);
+      if((to ofclass Room) && to.path_id~=SearchID &&
+         (act~=player || to has visited))
+        go=1;
+    }
+    
+    if(go)
+    {
+      to.path_id=SearchID;
+      to.path_from=i;
+      to.path_dir=d;
+      to.path_length=length;
+      SearchQ-->EndQ=to;
+      if(EndQ++>MAXQ) EndQ=0;
+    }
+  }  
+  jump scan;
+];
+
+[ KillPath x;
+  if(x<0 || x>=PATHSTOSTORE)
+    rtrue;
+  Path_index-->x=0;
+  Path_index-->(x+PATHSTOSTORE)=0;
+  Path_index-->(x+2*PATHSTOSTORE)=0;
+  Path_index-->(x+3*PATHSTOSTORE)=0;
+  Path_index-->(x+4*PATHSTOSTORE)=0;
+];
+
+
+Class Talker
+  with
+    present 0,
+    available 0,
+    silent 0;
+
+Class Walker class Talker
+  with
+    speed 100,
+    mission_list 0 0,
+    mission_nr -1,
+    mission_queue -1,
+    last_mission -1,
+    last_substep -1,
+    same_substep_turns 0,
+    mission_action -1,
+    mission_step -1,
+    mission_substep -1,
+    mission_waitturns -1,
+    path_nr -1,
+    path_id -1,
+    freeze_one_turn  false,
+    followpath false,
+    pathdest 0,
+    domission true,
+    daemon_running false, ! To remember if the daemon was running before walk
+    
+    startup [;
+      self.daemon_running=true;
+      StartDaemon(self);
+    ],
+    shutdown [;
+      self.daemon_running=false;
+      StopDaemon(self);
+    ],
+    endofpath [;
+      self.followpath=false;
+      self.mission_nr=-1;
+      self.mission_action=-1;
+      if(self.daemon_running==false)
+        StopDaemon(self);
+      rtrue;
+    ],
+    move [ dir;
+      return MovePersonDir(self,dir);
+    ],
+      
+    daemon [;
+      if(self.freeze_one_turn) {
+        self.freeze_one_turn=false;
+        rtrue;
+      }
+
+      if(self.followpath) {
+!       print (The) self, " is walking...^";
+        self.walk();
+      }
+      else {
+        if(self.domission) {
+!         print "Missioning...^";
+          if(self.pursuemission()==true)
+            self.mission_nr=-1;
+        }
+      }
+    ],
+    
+    walk [ dest exitval;
+      dest=self.pathdest;
+      if(self in dest) {
+        self.endofpath();
+        rfalse;
+      }
+      else {
+        self.mission_nr=1;
+        self.mission_action=actGoTo;
+        exitval=(self.pursuemission());
+        
+        if(exitval==true && self~=player && TestScope(self) &&
+            self.same_substep_turns<4) {
+          Comments.make_busy(self);
+          print "^",(The) self," sighs deeply and says ~I'm sorry, I can't \
+            stand around here all day. Got work to do, you know.~^";
+        }
+        if(self in dest || exitval==true)
+          self.endofpath();
+      }
+    ],
+    
+    pursuemission [ r destination eatsteps did_something laps;
+      ! Returns true if it fails to do anything
+      
+      if(self.mission_action==actGoTo && random(100)>self.speed) rfalse;
+
+      laps=0;
+      do {
+        did_something=true;
+        if(self.mission_nr<1 || self.mission_nr>Mission_index-->0) {
+!        print "Selecting new mission at beginning!^";
+!        print "Current: ",self.mission_nr," of ",Mission_index-->0,"^";
+          SelectMission(self);
+        }
+!        print (The) self, " has selected mission ",self.mission_nr,"!^";
+      
+        eatsteps=0;
+        if(self.followpath)
+          self.mission_action=actGoTo;
+        else
+          self.mission_action=Missions-->self.mission_step;
+!       print "^",(The) self," does action ",self.mission_action,".^";
+        switch(self.mission_action) {
+
+         actGoTo:
+
+          if(self.followpath)
+            destination=self.pathdest;
+          else
+            destination=Missions-->(self.mission_step+1);
+!         print (The) self, " wants to go to ", (name) destination,".^";
+          
+          if(self in destination) {
+            self.path_nr=-1;
+            eatsteps=2;
+            did_something=false;
+!            print "On target!!!^";
+          }
+          else {
+            if(self.path_nr>=0 &&
+               (self.path_id==Path_index-->(self.path_nr+4*PATHSTOSTORE)) &&
+               Paths->self.mission_substep>0) 
+            {
+              ! *** Is on a path that has not been overwritten, is not at EOP
+              if(self.move(Paths->(self.mission_substep++))==false) {
+                #IFDEF DEBUG;
+                if(PathInfo)
+                  print (The) self," tries to go in direction ",
+                    Paths->(self.mission_substep-1),
+                    " but fails.^";
+                #ENDIF;
+                KillPath(self.path_nr); ! The world has changed--path no good
+                did_something=false;
+              }
+            }
+            else {
+              ! *** Doesn't have a place to go. Either he has never had a path,
+              ! *** or the path has been overwritten, or the environment has
+              ! *** changed. In any case, find a path!
+
+              if(self.path_nr>=0 &&
+                 self.path_id==Path_index-->(self.path_nr+4*PATHSTOSTORE))
+                ! *** The path exists but ends up in the wrong place
+                KillPath(self.path_nr);
+              
+              if(FindPath(parent(self), destination, self)==0) 
+                ! *** Found a path
+                self.mission_substep=self.path_nr*PATHMAXLENGTH;
+              else 
+                self.mission_nr=-1; ! *** Didn't find a path
+              did_something=false;
+            }  
+          }
+          jump EndSwitch;
+
+         actClose:
+
+          r=Missions-->(self.mission_step+1);
+          if(r has door && r has open) {
+            give r ~open;
+            if(TestScope(r)) {
+              Comments.make_busy(self);
+              print "^",(The) self," closes ",(the) r,".^";
+            }
+          }
+          else
+            did_something=false;
+          eatsteps=2;
+
+         actLock:
+
+          r=Missions-->(self.mission_step+1);
+          if(r has door) {
+            if(r has open) {
+              if(TestScope(r)) {
+                Comments.make_busy(self);
+                print "^Looking rather irritated, ",(the) self,
+                  " closes and locks ", (the) r,".^";
+              }
+            }
+            else {
+              if(r hasnt locked) {
+                if(TestScope(self)) {
+                  Comments.make_busy(self);
+                  print "^",(The) self, " locks ",(the) r,".^";
+                }
+                else
+                  if(TestScope(r))
+                    print "^A click is heard from ",(the) r,".^";
+              }
+              else
+                did_something=false;
+            }
+            give r ~open;
+            give r locked;
+            eatsteps=2;
+          }
+          else
+            did_something=false;
+          
+         actUnlock:
+
+          r=Missions-->(self.mission_step+1);
+          if(r has door) {
+            if(r has locked) {
+              if(TestScope(self)) {
+                Comments.make_busy(self);
+                print "^",(The) self, " unlocks ",(the) r,".^";
+              }
+              else
+                if(TestScope(r))
+                  print "^A click is heard from ", (the) r,".^";
+            }
+            else
+              did_something=false;
+            give r ~locked;
+          }
+          else
+            did_something=false;
+          eatsteps=2;     
+
+         actPushOutAndClose:
+
+          did_something=false;
+          objectloop(r has animate && r in Bathroom && r~=player && r~=self) {
+            MovePersonDir(r,n_to);
+            did_something=true;
+          }
+          if(TestScope(self)) {
+            Comments.make_busy(self);
+            if(BathroomDoor hasnt open)
+              print "^",(The) self," opens the door again and urges you to \
+                leave.^";
+            else
+              print "^",(The) self," says ~Do you mind?~ and pushes you out \
+                into the corridor.^";
+            PlayerTo(Corridor12,2);
+            did_something=true;
+          }
+          if(BathroomDoor has open) {
+            give BathroomDoor ~open;
+            did_something=true;
+            if(location==Corridor12) {
+              Comments.make_busy(self);
+              print "^",(The) self," closes ",(the) BathroomDoor,".^";
+            }
+          }
+          eatsteps=1;
+
+         actLeaveStore:
+
+          if(self in CellarStore) {
+            objectloop(r has animate && r in CellarStore &&
+                       r~=player && r~=self){
+              MovePersonDir(r,n_to);
+              give HeavyDoor open;
+            }
+            if(location==CellarStore) {
+              Comments.make_busy(self);
+              print "^~All right, time to leave!~ says ",(the) self,", \
+                and waits behind to turn out the lights as you leave \
+                the room.^";
+              PlayerTo(CCorridorI,2);
+              give HeavyDoor open;
+            }
+            if(HeavyDoor.pass_door(self) ofclass Room) {
+              give HeavyDoor open;
+              MovePersonDir(self,n_to,true);
+            }
+
+            r=0;
+            if(Candle in BoltPocket && Candle hasnt general) r=Candle;
+            if(Soap in BoltPocket && Soap hasnt general) r=Soap;
+            if(r>0) {
+              move r to CCorridorI;
+              give HeavyDoor locked;
+            }
+
+            if(location==CCorridorI) {
+              Comments.make_busy(self);
+              print "^",(The) self," releases ",(the) HeavyDoor;
+              if(r>0)
+                print " but it won't close. ", (The) self,
+                      " finds ", (the) r, " in the bolt pocket \
+                      and throws it on the ground.";
+              else print ", which swings shut.";
+              if(HeavyDoor has locked)
+                print " A click is heard from the door.^";
+              else
+                new_line;
+            }
+            did_something=true;
+            eatsteps=1;
+          }
+          else {
+            did_something=false;
+            eatsteps=1;
+          }
+              
+         actWaitTurns:
+
+          if(self.mission_substep<0) {
+            r=Missions-->(self.mission_step+1)+
+              random(Missions-->(self.mission_step+2)-
+                      Missions-->(self.mission_step+1)+1)-1;
+            self.mission_waitturns=r;
+            self.mission_substep=r;
+          }
+          else if(--(self.mission_substep)<1) {
+            eatsteps=3;
+          }
+
+        default:
+          #IFDEF DEBUG;
+          if(PathInfo)
+            print (The) self, " yells for daddy on step ",
+              self.mission_step,  ".^";
+          #ENDIF;
+          self.mission_nr=-1;
+          did_something=false;
+          .EndSwitch;
+          
+        }
+        if(self.followpath==false) {
+          !        print "Mission step: ",self.mission_step;
+          !        print " Next mission step: ",self.mission_step+eatsteps,"^";
+          self.mission_step=self.mission_step+eatsteps;
+          if(eatsteps~=0) self.mission_substep=-1;
+          if(Missions-->self.mission_step==0) {
+            ! *** Mission finished
+            !          print "Finished!!!^";
+            self.mission_nr=-1;
+          }
+        }
+      } until (did_something || ++laps>Max_mission_tries);
+
+      if(self.mission_nr>0 && self.mission_action==actGoTo) {
+        if(self.last_substep==self.mission_substep) {
+          if(++self.same_substep_turns>3 && self~=player) {
+            if(self.same_substep_turns==4)
+              if(TestScope(self)) {
+                Comments.make_busy(self);
+                print "^~You're sort of childish, you know that?~ says ",
+                  (the) self,".^";
+              }
+            rtrue;
+          }
+          else if(self.same_substep_turns>1 && self==player) {
+            give tw_waiting on; ! To stop the automatic walk
+            rtrue;
+          }
+        }
+        else
+          self.same_substep_turns=0;
+      }
+      self.last_substep=self.mission_substep;
+          
+      if(laps>Max_mission_tries) {
+        #IFDEF DEBUG;
+        print "^DEBUG: ",(The) self," has freaked out on mission#",
+          self.mission_nr,", step#", self.mission_step,"!^";
+        #ENDIF;
+        self.mission_nr=-1;
+        rtrue;
+      }
+      else
+        rfalse;
+    ];
+
+
+
+
+Walker PlayerObject "yourself"
+  with number 0, after $ffff, life $ffff,
+       time_out $ffff,
+    describe $ffff, capacity MAX_CARRIED,
+       parse_name 0, short_name 0, orders 0,
+
+    ! Above is standard, below follows new definitions of the player object
+    name "i",
+
+    dirty false,
+    absorbed_radiation 0,
+    castle_trespass 0,
+    ufo_delay 2,
+
+    move [ dir;
+      print "^>go ",(address) dir.&name-->1,"^";
+      <<Go dir>>;
+!      PlayerTo(dest,2);
+    ],
+    endofpath [;
+      self.Walker::endofpath();
+      give tw_waiting on;
+    ],
+
+    check_water [x;
+      if(x ofclass Water)
+        player.waterquant=player.waterquant+x.quantity;
+    ],
+    waterquant 0,    
+    description [x i;
+      if(self.dirty)
+        "You are quite dirty after climbing the chimney.";
+
+      i=false; objectloop(x in self && x has worn) i=true;
+      if(i==false) "You are a responsible father and husband, \
+                   not a porn star. Put on some clothes!";
+
+      print "You've looked worse";
+      if(location<Road)
+        ", but the day has just begun.";
+      if(location<CabinHall2)
+        ". You have an unpleasant hunch this may change during the day.";
+      if(IronDoor has open)
+        ". Not much though.";
+      ".";
+    ],
+    showknife [p;
+       if(StuckKnife has general) "Some people learn from their mistakes. You don't.";
+
+       move StuckKnife to location;
+       remove Knife;
+       print_ret (The) p, " takes the knife and throws it \
+                      up into the air, catching it again without even \
+                      looking. Then ", (PronounNom) p, " suddenly throws \
+                      the knife at the wall right next to you, where it digs \
+                     deep into the wood. ~I guess there are a lot of things \
+                     you don't know about me,~ ",  (PronounNom) p,  " laughs.";
+    ],
+
+    ! This react_before disambiguates the players movements, and
+    ! checks special scope rules in the cableway station.
+    react_before [near_cabin;
+      near_cabin=TestScope(Cabin);
+      Threaten:
+         if(second==Knife && noun==Williams or Petra  or John or Schwartz) {
+           self.showknife(noun);
+           rtrue;
+         }
+      Show:
+         if(noun==Knife && second==Williams or Petra or John or Schwartz) {
+           self.showknife(second);
+           rtrue;
+         }
+      ThrowAt:
+        if(near_cabin) return self.cabin_react_before(false, true);
+         if(noun==Knife && second==Williams or Petra or John or Schwartz) {
+           self.showknife(second);
+           rtrue;
+         }
+      MyRemove, Take:
+        if(near_cabin) {
+          if(player in CabinLadder && noun==d_obj) <<GetOff CabinLadder>>;
+          if(noun==Bow && Bow in CabinRoof && player in location) rfalse;
+          return self.cabin_react_before();
+        }
+      PutOn:
+        if(near_cabin) {
+          if(noun==Bow && second==CabinRoof && player in location) rfalse;
+          return self.cabin_react_before();
+        }
+      Ask, Tell, Examine:
+        if(near_cabin) rfalse;
+      Listen:
+        if(near_cabin) rfalse;
+        if(noun==0 && car has on && car in location)
+          "All you hear is the dreadful sound of the car stereo.";
+        if(player in OuterLivingRoom && Dog in Terrace && TerraceWindow hasnt open)
+          rtrue;
+      Drop:
+        if(metaclass(noun)~=Object) rfalse;
+        if(player in LowerWire) <<PutOn noun LowerWire>>;
+        if(player in UpperWire) <<PutOn noun UpperWire>>;
+        if(player in CabinLadder) <<PutOn noun CabinLadder>>;
+        if(near_cabin) return self.cabin_react_before();
+      GetOff:
+        if(player in LowerWire && noun==0) <<GetOff LowerWire>>;
+        if(player in UpperWire && noun==0) <<GetOff UpperWire>>;
+        if(player in CabinRoof && noun==0) <<GetOff CabinRoof>>;
+        if(player in CabinLadder && noun==0) <<GetOff CabinLadder>>;
+        if(near_cabin) return self.cabin_react_before();
+      Jump:
+        if(player in LowerWire && (noun==d_obj || noun==0)) <<GetOff LowerWire>>;
+        if(player in UpperWire && (noun==d_obj || noun==0)) <<GetOff UpperWire>>;
+        if(near_cabin) return self.cabin_react_before();
+        if(TestScope(SmokeDetector)) "You still can't reach the smoke detector.";
+      Go:
+        if(metaclass(noun)~=Object) rfalse;
+        if(player in LowerWire) {
+          if(noun==d_obj) <<GetOff LowerWire>>;
+          if(noun==n_obj) <<Go LowerWire>>;
+          if(noun~=LowerWire) "By flying? You'd better step down from the wire first.";
+        }
+        if(player in UpperWire) {
+          if(noun==d_obj) <<GetOff UpperWire>>;
+          if(noun==s_obj) <<Go UpperWire>>;
+          if(noun~=UpperWire) "By flying? You'd better step down from the wire first.";
+        }
+        if(player in CabinRoof) {
+          if(noun==d_obj) <<GetOff CabinRoof>>;
+          "You have to get off the cable car roof first.";
+        }
+        if(player in CabinLadder) {
+          if(noun==d_obj) <<GetOff CabinLadder>>;
+          if(noun==u_obj) <<Climb CabinLadder>>;
+          "This ladder has two main directions, up and down.";
+        }
+        if(player in Cabin) {
+          if(noun==u_obj) <<Climb CabinLadder>>;
+          "You have to leave the cable car first.";
+        }
+        if(near_cabin) return self.cabin_react_before();
+      Exit:
+        if(player in car && noun==0) <<Exit Car>>;
+        if(player in car && noun==Car) {
+          if(Car has on) {
+            print "(turning off the car engine first)^^";
+            give Car ~on;
+          }
+          if(Car hasnt open) {
+            print "(opening the car door first)^^";
+            give Car open;
+          }
+        }
+        if(player in LowerWire && noun==0) <<GetOff LowerWire>>;
+        if(player in UpperWire && noun==0) <<GetOff UpperWire>>;
+        if(player in CabinRoof && noun==0) <<GetOff CabinRoof>>;
+        if(player in CabinLadder && noun==0) <<GetOff CabinLadder>>;
+        if(player in Cabin) {
+          if(Cabin.number==2 or 19) {
+            print "The cable car is still in the terminal, about to start. \
+                   Are you sure you want to leave it now?^^>>";
+            if(YesOrNo()==false) {
+              META=1;
+              rtrue;
+            }
+          }
+        }
+        if(near_cabin) return self.cabin_react_before();
+      default:
+        if(near_cabin) return self.cabin_react_before();
+    ],
+    cabin_react_before [x y;
+      if(CabinReachable(noun, true, x)==false) rtrue;
+      if(CabinReachable(second, true, y)==false) rtrue;
+      rfalse;
+    ],
+    react_after [;
+      Exit:
+        if(noun==Car) {
+          if(Car has open) {
+            print "(closing the car door)^^";
+            give Car ~open;
+          }
+        }
+    ],
+
+    before [x y;
+#IFDEF DEBUG;
+     Burn:
+       print "[~burn me~ changed for debugging only]^";
+       META=1;
+       print "^---BEGINNING OF NEW COMMENTS---";
+       Comments.make_comments();
+       "^------END OF NEW COMMENTS------";
+#ENDIF;
+     Take: "Nice try.";
+     Ask, Tell, Answer:
+      "Talking to yourself is said to be a sign of impending mental collapse.";
+     Attack: "Hurting yourself wouldn't help.";
+     Smell: "Maybe you should cut down a little on the after-shave.";
+     Eat, Drink, Taste: "Auto-cannabalism? Groovy!";
+     Rub:
+      self.waterquant=0;
+      LoopOverScope(self.check_water);
+      if(self.waterquant<50)
+        "You realize that you don't have enough water. You would just \
+        smear the dirt out.";
+
+      if(self.dirty) {
+        self.dirty=false;
+        Puzzles.PuzzleSolved(WashMyselfPuzzle);
+        Achieved(10);
+        y=0;
+        objectloop(x in player) {
+          if(x has worn && x provides dirty && x.dirty==true) {
+            ++y;
+            x.dirty=false;
+            x.dirtyness=0;
+            give x workflag;
+          } else {
+            give x ~workflag;
+          }
+        }
+        print "You wash yourself";
+        if(y>0) {
+          if(y==1) print " and "; else print ", ";
+          WriteListFrom(child(player), DEFART_BIT+ENGLISH_BIT+WORKFLAG_BIT);
+        }
+        " carefully. Once you have water, getting rid of the dirt \
+        doesn't prove too difficult.";
+      }
+      else
+        "Ah, refreshing! It's a good habit to wash every once in a while.";
+    ],
+    each_turn [ p x;
+      while((x=child(DestructionRoom))>0)
+        if(x ofclass Liquid) (x.liquidtype).destroy(x);
+
+      ! Give UFO comment
+      if(self.ufo_delay>0) {
+        --self.ufo_delay;
+        if(self.ufo_delay==0) {
+          if(location==DriveWay) {
+            print "^You hear something approaching! A mighty \
+                  roar is heard and something passes quickly over \
+                  the cabin. You first thought is that it must \
+                  be a jet fighter on low altidute, but it sure \
+                  looked strange.^";
+          } else {
+            print "^You hear something quickly approaching! A \
+                  roar is heard and the furniture starts shaking as \
+                  something passes over the cabin. It could be a \
+                  jet fighter whose altitude is far too low for \
+                  comfort.^";
+          }
+        }
+      }
+
+      ! Check castle trespassing status
+      if(self in Corridor7 && self.castle_trespass==0) {
+        if(player.dirty) {
+          self.castle_trespass=1;
+          if(Petra in location) print "Petra";
+          else print "^Petra appears. She";
+          print " is surprised to find you covered with soot and says ";
+        } else if(IronKettle in player) {
+          self.castle_trespass=1;
+          if(Petra in location) print "Petra";
+          else print "^Petra appears. She";
+          print " sees the iron kettle and says ";
+        } else {
+          p=0;
+          objectloop(x in player)
+            if(x provides dirty && x.dirty)
+              if((~~(x provides dirt_shows)) || x.dirt_shows())
+                p=x;
+          if(p>0) {
+            self.castle_trespass=1;
+            if(Petra in location) print "Petra";
+            else print "^Petra appears. She";
+            print " stares at your dirty ", (name) p, " and says ";
+          }
+        }
+        if(self.castle_trespass==1) {
+          print "~Oh my, where have you been?~ Your explanations don't \
+                convince her and she walks away.^";
+          move Petra to Entrance; ! so that she will not appear again.
+        }
+      }
+
+      if(self.castle_trespass>0) {
+        ++self.castle_trespass;
+        if(self.castle_trespass>4) {
+          deadflag=3;
+          print "^Schwartz appears, followed by Petra. Schwartz insists on \
+                finding out where you have been, and soon discoveres the \
+                fresh tracks in the snow leading up to the castle. You are \
+                brought to Dr. Williams, who is very agitated and points out that ";
+          if(SignedPaper has general)
+            print "it was clearly stated in ", (the) SignedPaper;
+          else print "it was announced on the clearly visible sign-post";
+          print " that the castle is off-limits for all personel. He \
+                orders you to leave the centre for the time being.^";
+        }
+      }
+      if(self.castle_trespass>0) ++self.castle_trespass;
+
+      ! Check radiation
+      if(TestScope(Sphere) && Sphere notin Sack) {
+        ++self.absorbed_radiation;
+      }
+
+      ! Update John's drunkness
+      if(John.drunk>0) {
+        --John.drunk;
+        if(John.drunk==0) StartDaemon(John);
+      }
+      
+! ######################## 
+! ######################## COMMENTS OBJECT SHOULD REPLACE ALL FROM THIS POINT
+! ######################## 
+
+      if(location>Road)
+        Comments.make_comments();
+
+      rfalse;
+        
+    ],
+  has concealed animate proper transparent;
+
+Washable -> TShirt "T-shirt"
+  with
+    name "tshirt" "t-shirt" "shirt" "teeshirt" "tee-shirt",
+    description [;
+      print "On its front is a German flag and the text ~Noch einmal!~";
+      if(self.dirty) print " It is quite dirty.";
+      "";
+    ],
+    layer 1,
+    recurse 0,
+    make_dirty [;
+      if((Sweater in player && Sweater has worn && Sweater.layer>self.layer) ||
+          (Overalls in player && Overalls has worn && Overalls.layer>self.layer))
+        rfalse;
+      self.dirty=true; self.soap_smell=false;
+    ],
+    dirt_shows [;
+      if(self in player && self has worn &&
+          ((Sweater in player && Sweater has worn && Sweater.layer>self.layer) ||
+           (Overalls in player && Overalls has worn && Overalls.layer>self.layer)))
+        rfalse;
+      rtrue;
+    ],
+    before [x l;
+      if(self.recurse) {
+        self.recurse=0;
+        rfalse;
+      }
+     Wear:
+      if(self in player && self has worn) rfalse;
+      if(Sweater in player && Sweater has worn) {
+        x=Sweater;
+        l=Sweater.layer;
+      }
+      if(Overalls in player && Overalls has worn && Overalls.layer>l) {
+        x=Overalls;
+      }
+      if(x>0) {
+        if(x==Overalls)
+          print "It's a struggle getting it over ",(the) x,", but your \
+            stubborness is rewarded. Now, if Michelin are looking for an \
+            actor for their commercials, you'll be the obvious choice.^";
+        else
+          print "You spend some time cursing the manufacturer of ", 
+            (the) x," for using such thick materials, but you manage.^";
+        self.recurse=1;
+        keep_silent=1;
+        <Wear self>;
+        keep_silent=0;
+        rtrue;
+      }
+     Disrobe:
+      if(self notin player || self hasnt worn) rfalse;
+      if(Overalls in player && Overalls has worn && Overalls.layer>self.layer)
+        "Not without taking the coveralls off first, you don't.";
+      if(Sweater in player && Sweater has worn && Sweater.layer>self.layer)
+        "The way I recall it, you put on your sweater after your T-shirt.";
+    ],
+    after [x y;
+     Wear:
+      if(Sweater in player && Sweater has worn) x=1;
+      if(Overalls in player && Overalls has worn) y=1;
+      self.layer = 1 + x + y;
+    ],
+    has clothing worn;
+
+Washable -> Jeans "pair of jeans"
+  with
+    name "pair" "of" "jeans",
+    layer 1,
+    recurse 0,
+    description [;
+      if(self.dirty) "The pair of jeans are dirty.";
+      "Your favourite pair of jeans.";
+    ],
+    make_dirty [;
+      if(Overalls in player && Overalls has worn &&
+         Overalls.leglayer>self.layer) rfalse;
+      self.dirty=true; self.soap_smell=false;
+    ],
+    dirt_shows [;
+      if(self in player && self has worn && 
+          Overalls in player && Overalls has worn && Overalls.leglayer>self.layer)
+        rfalse;
+      rtrue;
+    ],
+    before [;
+      if(self.recurse) {
+        self.recurse=0;
+        rfalse;
+      }
+     Rub:
+      if(self.dirty==false) print_ret (The) self, " are already clean.";
+     Search:
+      if (self has worn) 
+      {
+        print "You figured out the difference between boys and girls a long \
+          time ago. You ";
+        style bold; print "know"; style roman;
+        " what is in the jeans.";
+      }
+     Wear:
+      if(self in player && self has worn) rfalse;
+      if(Overalls in player && Overalls has worn) {
+        print "It's a tight fit, already wearing ",(the) Overalls,", but \
+          you manage to get ",(the) self," on.^";
+        self.recurse=1;
+        keep_silent=1;
+        <Wear self>;
+        keep_silent=0;
+        rtrue;
+      }
+     Disrobe:
+      if(self notin player || self hasnt worn) rfalse;
+      if(Overalls in player && Overalls has worn &&
+         Overalls.leglayer>self.layer)
+        "That seems rather tricky without taking off the coveralls first.";
+    ],
+    after [x;
+     Wear:
+      if(Overalls in player && Overalls has worn) x=1;
+      self.layer = 1 + x;
+    ],
+    has clothing worn;
+
+Washable Sweater "sweater"
+  with
+    name "warm" "sweater",
+    description [;
+      print "It's a warm and thick sweater, perfect for \
+        winter usage.";
+      if(self.dirty) {
+        if(self.dirtyness>1)
+          " It has become very dirty.";
+        else
+          " The arms are very dirty.";
+      }
+      "";
+    ],
+    layer 0,
+    make_dirty [;
+      if(TShirt in player && Tshirt has worn && Tshirt.layer>self.layer &&
+          self.dirtyness<2)
+        self.dirtyness=1; ! Meaning only the arms get dirty.
+      else if(Overalls in player && Overalls has worn &&
+          Overalls.layer>self.layer)
+        rfalse;
+      else
+        self.dirtyness=2; ! Meaning the whole sweater gets dirty.
+      self.dirty=true; self.soap_smell=false;
+    ],
+    dirt_shows [;
+      if(self in player && self has worn &&
+          Overalls in player && Overalls has worn && Overalls.layer>self.layer)
+        rfalse;
+      rtrue;
+    ],
+    before [;
+     Disrobe:
+      if(Overalls in player && Overalls has worn && Overalls.layer>self.layer)
+        "Not without taking the coveralls off first, you don't.";
+      if(TShirt in player && Tshirt has worn && Tshirt.layer>self.layer)
+        "Silly as it may seem, you are wearing your t-shirt over your \
+        sweater. You'd have to take that off first.";
+    ],
+    after [x y;
+     Wear:
+      if(TShirt in player && Tshirt has worn) x=1;
+      if(Overalls in player && Overalls has worn) y=1;
+      self.layer = 1 + x + y;
+    ],
+    has clothing;
+
+
+Walker Petra "Petra"
+  with
+    name "petra" "neubaum" "woman" "person",
+    number 0, ! check if player is making a pass on her.
+    describe [;
+      if(self.introduction(false)) rtrue;
+    ],
+    introduction [arrived_flag;
+      self.introduction=$ffff;     
+      if(arrived_flag)
+        "^A woman enters the room. She introduces herself as Petra Neubaum.";
+      "^There is a woman here, who introduces herself as Petra Neubaum.";
+    ],
+    description "She is an elegant middle-aged woman, looking sharp and \
+      focused, and yet charming. Her short brown hair is perfectly kept,
+      and in no way detracts from her feminism. She seems to be quite busy.",
+    speed 80,
+    mission_list misTalkToHenkel 8 misResearch 20 misSnack 15 misGotoLoo 5
+      misReadBook 10 misGotoCellarStore 15 misGotoWilliams 5
+      misGotoSchwartz 3 misGotoJohn 5 misGotoPetraSelf 10,
+    answer -1,
+    question_turn -1,
+    before [;
+    ShakeHands: "Petra's hand is cold and firm.";
+    ],
+    life [ k;
+    Kiss:
+      switch(++self.number) {
+      1: self.freeze_one_turn=true;
+         "You are a married man. Think about your wife and daughters!";
+      2: self.freeze_one_turn=true; "You wouldn't dare!";
+      3: "Ok, you dare. You walk towards Petra, hug her, and let your lips touch \
+         hers. Strong emotions stir through your body, there is violin music \
+         in the air, and your hands start...^^
+         Wham! There is a flash of pain on your right chin. Petra slips \
+         out of your arms.";
+      default: "Remember what happened last time you tried that.";
+      }
+    Give, Show:
+      if(noun ofclass Cigarette || noun==Packet) "~I don't smoke.~";
+      if(noun==Sphere) { Sphere.revealed(Petra); rtrue; }
+      if(noun==VideoGame) "~I prefer adventure games.~";
+    Ask, Tell:
+    self.freeze_one_turn=true;
+    switch(second) {
+    'sex': "~Living isolated up here, where the only men around are my \
+      colleagues, makes me focus on my work instead. And my dog.~^^\
+      ~I said INSTEAD of sex!~ she adds, blushing slightly.";
+    'love': "~Well, I love my dog, if that's what you mean.~";
+    'hello', 'hi', 'good':
+      print_ret (string) random("~Oh, hello!~", "~Nice to meet you~",
+        "~How do you do?~");
+    'sphere', 'alien', 'aliens': "~Who told you? It's supposed to be secret.~";
+    'parrot': "~Have you seen Dr. Williams' parrot yet?~";
+    'computer','pc','user','account','password', 'login':
+      "~Ms. Henkel is the PC user administrator. Ask her.~";
+    'dog', 'dogs', 'dobermann', 'doberman':
+        "~I love dogs! I even brought my Doberman here. He stays in my apartment \
+        while I work, and we take long walks in the evenings.~";
+    'john', 'fulhamn', 'alcohol':
+        "~Poor John. He hasn't been himself since his wife left him. At first he \
+        drank too much, but the isolation here seems to help him.~";
+    'dandruff': "~John should really do something about his dandruff. It is disgusting.~";
+    'dr', 'williams':
+        "~He is a brilliant scientist. It is so rewarding to work with him.~";
+    'machine', 'complicated', 'experiments', 'chemical', 'experiment':
+        "Petra immeditialy starts explaining something, using a language so \
+        filled with technical terms that you can't understand anything.";
+    'ase', 'project':
+        "~I'm soon finished with my part of the ASE project,~ Petra says. \
+        ~Actually it will be nice to go back to Hannover. The isolation up \
+        here gets to me.~";
+    'stefan', 'lumbis': "~What about him? He is gone.~";
+    'henkel', 'maria': "~We get along so well. If I was the only woman around \
+      here, I'd probably go crazy.~";
+    'schwartz', 'thomas':
+      "~I guess he does his job. Perhaps we don't get along all that well, \
+        but you can't expect to like everyone in a lab.~";
+    'castle': "~It was destroyed in the war.~";
+    default:
+      if(second=='personal' or 'access' or 'code' or 'codes' or 'number')
+        "~These codes are a pain in the neck. How am I \
+        supposed to work efficiently when I need to call \
+        for all colleagues every time I need to go to the \
+        security lab?~";
+      k=TryNumber(consult_from);
+      if(k>-1 && k<10000)
+      {
+!       print "Turns: ",turns, " Q-turn: ", self.question_turn,
+!         " Player: ",k," Petra: ", self.answer,"^^";
+        
+        if(turns==self.question_turn) 
+        {
+          self.question_turn=-1;
+          if(k==self.answer) 
+            print_ret "~Whoa, you're fast!~. Petra looks impressed.";
+          else 
+          {
+            print "~No, it's ";EnglishNumber(self.answer);
+            print_ret ", but it doesn't matter.~, says Petra."; 
+          }
+        }
+        else if(turns-self.question_turn<5 && self.question_turn>0)
+        {
+          self.question_turn=-1;
+          print "Petra says ~Thanks, but I don't need it anymore.";
+          if(k~=self.answer)
+            print " Anyway, it's wrong.~.^";
+          else
+            print "~.^";
+          rtrue;
+        }
+        else 
+        {
+          self.question_turn=-1;
+          "~Yes, what about it?~. Petra looks confused.";
+        } 
+      }
+      
+      else
+        print_ret (string)
+          random(
+                 "Petra seems to be too concentrated to take notice.",
+                 "~Later... I have some work to be done first,~ \
+                 Petra replies.",
+                 "~Ask Ms. Henkel instead,~ Petra says.");
+    }
+    Answer:
+      wn=consult_from;
+      <<Ask self NextWord()>>;
+    ],
+    orders [;
+    Hello: <<Ask self 'hello'>>;
+    ],
+!    orders [;
+!     GoToRoom:
+!      GoToRoomSub();
+!      rtrue;
+!     default:
+!      "She giggles at your request, obviously presuming it was meant \
+!      as a joke.";
+!    ],
+  has animate female proper;
+
+Talker Henkel "Henkel"
+  with
+    warned 0,
+    men_talk 0,
+    name "henkel" "maria" "woman" "receptionist" "blue" "dress",
+    describe [;rtrue;],
+    description
+      "She is a good looking woman in her mid thirties. On her blue \
+      dress there is a name tag that says ~Henkel~.",
+    daemon [;
+      if(player in Entrance) {
+        if(self hasnt general) {
+          give self general;
+          StartDaemon(Comments); ! This daemon starts all people's daemons
+          Comments.make_busy(self);
+          "^The receptionist faces you and says: ~Guten Tag, mein Herr, Ich \
+          hei@sse Henkel. Kann ich Ihnen helfen?~^^She hesitates for \
+          a moment, and then adds ~Do you speak English, Sir?~";
+        }
+        else {
+          Comments.make_busy(self);
+          print "^Henkel says: ~I can't let you enter the \
+            building before I've checked that you are on \
+            our appointment list. So, please tell me your name.~^";
+          rtrue;
+        }
+      }
+      if(player in Corridor1 || player in Corridor2 ||
+         player in Corridor12 || player in SWLab) { 
+        if(self.warned==0) {
+          self.warned=1;
+          give tw_waiting on;
+          "^You hear Henkel shout behind you: ~Come back or I will \
+          call the security.~";
+        } else {
+          self.warned=0;
+          give tw_waiting on;
+          print "^A man with a big gun is running up towards you. \
+                He escorts you back to the reception area.^";
+          PlayerTo(Entrance, 2);
+        rtrue;
+        }
+      }
+    ],
+    orders [;
+    Hello: <<Ask self 'hello'>>;
+    Yes: <<Ask self 'yes'>>;
+    No:  <<Ask self 'no'>>;
+    ],
+    life [;
+      Give, Show:
+        if(noun ofclass Cigarette || noun==Packet) "~I don't smoke.~";
+        if(noun==VideoGame) "~Oh my, it looks too complicated.~";
+      Answer:
+      wn=consult_from;
+        <<Ask self NextWord()>>;
+      Ask, Tell:
+      switch(second) {
+       'me', 'myself': "~You seem nice enough. I'm sure we'll get along just fine.~";
+       'love','men','sex','romance':
+         if(self.men_talk)
+           "~Oh, we've been through all that already. No need to rub it in.~";
+         self.men_talk=1;
+         "~That's overrated. You can go on living for a long time, thinking \
+           that men is all you need to get happy, but then you meet someone, \
+           and it turns out they're not so great up close. When you thought \
+           the two of you would be having long romantic talks on the balcony, \
+           you discover that he'd rather be watching sports all night on TV. \
+           Not that he'd do any sports himself, or any other kind of physical \
+           activity for that matter. You spend hours every night crying \
+           yourself to sleep after yet another day of total misery. \
+           And just when you think you've hit the bottom and \
+           things couldn't possibly get any worse, you find out he's been \
+           having an affair with your sister for over a year! Imagine \
+           that, your own sister! See, men aren't worth the trouble.~^^\
+           Wiping \
+           a tear from her eye, she adds: ~Now don't go around thinking \
+           all this happened to me and that I'm bitter or hate men or \
+           anything, because none of that is true. I'm just saying it \
+           could well happen to any girl.~";
+       'computer','pc','user','account','password', 'login':
+         "~Oh dear, I've been so busy lately that I havn't had time \
+          to set up your PC account yet. I'll have it fixed by Monday.~";
+       'yes', 'ok', 'y', 'affirmative': "~Jolly good.~";
+       'no', 'negative', 'n', 'sorry': "~Oh, that's too bad.";
+       'rope', 'rope-way', 'cable':
+         "~I control the  cable way from the reception. In terrible weather like \
+         this we try to use the rope-way as little as possible, so I hope \
+         you can wait until tomorrow. As I said, I'll bring you all necessities \
+         later.~";
+       'key', 'keys', 'apartment':
+         "~You came so early I hadn't time to get new keys for the apartment. \
+         I called the locksmith and he promised to come as soon as \
+         possible, but in this weather... let's wait a few hours more \
+         before we decide what to do.~";
+       'sphere', 'alien', 'aliens':
+         "~Someone brought a bag here a few hours ago and there was much \
+         fuzz about it. I think they put it in the security lab, and are \
+         now waiting for some experts to arrive.~";
+       'parrot':
+         "~Have you seen Dr. Williams' parrot yet?~";
+       'dandruff':
+         "~That poor man. Why doesn't John buy some shampoo for his dandruff problem?~";
+       'ase', 'project':
+         "~Oh dear, I don't know anything about that. Ask Dr. Williams.~";
+       'dog', 'dogs', 'doberman', 'dobermann':
+         "~Ms. Neubaums dog is huge. I'm actually a bit scared of it.~";
+       'hello', 'hi', 'good': "~Hello~";
+       'personal', 'access', 'code', 'codes', 'security', 'lab', 'number':
+        "~Oh, since we hired that new guard everything \
+        has become so complicated. Before we only had a normal \
+        door to the security lab, but now we have a vault door, \
+        which you need to give code numbers to open. \
+        But I mean, who would steal anything here? It's just a big \
+        hassle.~";
+       'stefan','lumbis':
+        "~Oh, we were very pleased with him, but he could never \
+        get accustomed to the isolation up here. It's a sad story, really.";
+       'henkel', 'maria': "~I'm named after my grandmother.~";
+       'john', 'fulham':
+        "~A nice man indeed. But when his wife left him he had \
+        a tough time. Drinking problems. Fortunately he seems \
+        to be better now.~";
+       'petra', 'neubaum':
+        "~She is nice, but hard to talk with. She is always \
+        thinking about her work.~";
+       'schwartz', 'thomas':
+        "~Well, if you promise you won't tell... \
+        I don't like him.~";
+       'dr','ronald', 'williams':
+        "~A very nice man. So kind and gentle.~";
+       'johan':
+        "~Johan? You mean Johan Berntsson? Boy am I glad that dude moved \
+        to Japan, he's just weird enough to fit the place!~";
+       'berntsson':
+        "~You mean THE Johan Berntsson? Boy am I glad that dude moved \
+        to Japan, he's just weird enough to fit the place!~";
+       'sten','holmberg','jan','@oaberg','aberg','aaberg','graham','nelson','michael',
+       'gerwat','mattias','fagerlund':
+        "~Oh, they were such nice young men; Sten Holmberg, Jan @oAberg, \
+        Graham Nelson, Michael Gerwat and Mattias Fagerlund. Without their \
+        help this place would still be a mess.~";
+       'staffan','friberg','fredrik','ramsberg':
+        "~Don't even get me started on that subject. If it wasn't for \
+        him... well, this world would be a better place to live, that's \
+        for sure!~";
+       'mayumi','ohsawa','osawa':
+        "~Isn't she married to Johan Berntsson?~";
+       'gunther','guenther','wallraff': "~Is this a joke?~";
+       'hans', 'leibach':
+        if(NameTag in ReceptionBox) {
+          Achieved(1);
+          StopDaemon(self);
+          StopDaemon(ServiceMan);
+          remove ServiceMan;         
+          move NameTag to player;
+          Puzzles.PuzzleSolved(EnterCentrePuzzle);
+          Puzzles.DoneHint(WhatNextPuzzle, 2); 
+          Comments.make_busy(self);
+          "~Let me see~, says Henkel. She takes up a paper from \
+          the desk and begins reading it. ~Yes, of course, you \
+          are the candidate from MIT~, she says after a while, \
+          ~We didn't expect you so soon. Dr. Williams said you \
+          couldn't get here until Monday~. Using your \
+          improvisation talents, you make up a story which \
+          explains your early arrival. It satisfies Henkel, \
+          and she hands you a name tag. ~You must wear this while \
+          you're here. Where is your luggage?~. Somewhat \
+          embarrassed, you explain that your luggage went \
+          with the wrong plane and is now in Gothenburg. ~What \
+          a bad luck! I'll try to find some necessities for you \
+          later, when I have received the keys for your apartment. But
+          first you should see your new boss. Please wait a moment...~. \
+          She picks up the phone and makes a short call.^^\
+          After a minute, a tall man enters the room and presents \
+          himself as Dr. Williams, president of the ASE project. \
+          After a short conversation, you understand that you \
+          are supposed to do some research as a part of your \
+          thesis, starting next week. Dr. Williams suggests that you \
+          see him in his office later on, and then walks off.";
+        }
+        "I thought we had sorted that out already.";
+       default:
+        if(NameTag in ReceptionBox)
+           "Henkel checks something on her desk and says, ~I'm sorry, but I can't
+           find that name on my appointment list.~";
+        print_ret (string) random(
+            "Henkel is too busy to pay attention to your remark.",
+            "She gives you a confused smile.");
+        }
+    ],
+  has animate female proper;
+
+Walker Schwartz "Schwartz"
+  with
+    name "guard" "man" "thomas" "schwartz" "security",
+    number 0, ! turns until trespassing discovered
+    warning_given false,
+    domission false,
+    cigarette_warning 0,
+    react_before [x y;
+      Examine: rfalse;
+      Enter:
+        if(noun==Chair1 && self in Office1)
+          "Schwartz may be slightly homophobic, and he is most definitely \
+            into guns. You probably don't want to risk your life just for \
+            a chance to sit on his lap.";
+        if(noun==Desk1 && self in Office1)
+          "^Schwartz says, ~Keep your ass off my desk!~";
+      default:
+        x=noun;   if(metaclass(x)==Object && x~=0 && x~=Video) x=parent(x);
+        y=second; if(metaclass(y)==Object && y~=0 && y~=Video) y=parent(y);
+        if(x==Video || y==Video)
+          "Schwartz won't let you near the video.";
+    ],
+    describe [;
+      if(self.introduction(false)) rtrue;
+      if(self in Office1) "^Schwartz is sitting in front of the monitor.";
+    ],
+    introduction [arrived_flag;
+      self.introduction=$ffff;     
+      if(arrived_flag)
+        "^A tall man enters the room. He introduces himself as \
+        Schwartz, the centre's security guard.";
+
+      if(self in Office1) {
+          print "^There is a man sitting in front of the monitor. He introduces \
+          himself as Schwartz, the centre's security guard";
+          if(Nametag in player && Nametag hasnt worn) {
+            print ". Seeing that you aren't wearing your name tag, he suggests that \
+                  you put it on";
+        }
+        ".";
+      }
+      "^There is a tall man here who introduces himself as \
+      as Schwartz, the centre's security guard.";
+    ],
+    description
+      "Thomas Schwartz is a tall man pushing fifty, impeccably dressed \
+      in a sharp unform. His cold eyes add to the impression of him \
+      being a man taking security very seriously.",
+    CheckCigarette [obj;
+      if(obj ofclass Cigarette) {
+        if(obj.burning || self.domission==0) self.domission=obj;
+      }
+    ],
+    daemon [;
+      if(TestScope(player, self)) {
+        self.domission=0;
+        LoopOverScope(self.CheckCigarette, player);
+        if(self.domission>0) {
+          if(self.domission.burning) {
+            Comments.make_busy(self);
+            print "^Schwartz sees your lit cigarette and says that the \
+                  centre has a strict non-smoking policy. He is so \
+                  insistant that you have no choice but to put it out.^";
+            give tw_waiting on;
+            self.domission.stop_burn();
+          } else {
+            if(self.cigarette_warning==0) {
+              Comments.make_busy(self);
+              print "^Schwartz sees your cigarette and \
+                    mutters something about the non-smoking policy.^";
+            }
+            ++self.cigarette_warning;
+            if(self.cigarette_warning>2 && random(10)<4)
+              self.cigarette_warning=0;
+          }
+        }
+        self.domission=false;
+      }
+
+      if(self in Office1) {
+        if(player in Desk1 or Chair1) {
+          print "^Schwartz says ~Get off my ", (name) parent(player),
+                "!~ You obey.^";
+          move player to Office1;
+        }
+        if(Video.mode==2 && (player in CCorridorIII || SecurityDoor has open) && self.number==0) {
+          self.number=8;
+        }
+        if((Video.mode==0 || (Video.mode==1 && Video.where==1)) &&
+           player notin Office1) {
+          deadflag=3;
+          "^Schwartz comes up to you. He says, ~Spy, you're under \
+          arrest!~ He points a gun at you and continues, ~I \
+          distrusted you from the beginning and when I saw that \
+          you've been manipulating the video I called MIT for a \
+          description of Hans Leibach. As far as I'm concerned you \
+          are not a Hungarian with American citizenship. \
+          Who are you working for? The Russians, the Arabs?~ \
+          Your protests are ignored and you are brought to the police.";
+        }
+      }
+      if(self.number>0) {
+        give tw_waiting on;
+        if(self.number==8) 
+          print "^Suddenly high-pitched alarm signals start emerging \
+                from hidden loudspeakers.^";
+        else
+          print "^You hear sharp alarm signals.^";
+
+        --self.number;
+        if(self.warning_given==false && self.number==5) {
+          self.number=0;
+          self.warning_given=true;
+          print "^Schwartz comes running up to you and shouts \
+                ~I saw your trespassing on the video monitor. \
+                Don't you know that the basement is a restricted area?~ \
+                He leads you to Dr. Williams who explains to you \
+                that only authorized personel, with number codes for the \
+                security door, may enter the security lab. With that he lets \
+                the matter rest for this time.^";
+          PlayerTo(WilliamsOffice, 1);
+        } else if(self.number==0) {
+          deadflag=3;
+          "^Schwartz comes running up to you. He pulls out a gun \
+          and points it at you. ~You're trespassing again! \
+          Now we will sort this out.~ He leads you to Dr. Williams \
+          who calls MIT for a identification of Hans Leibach. The real \
+          Hans is currently in Paris, so you are accused of espionage and \
+          brought to the police.";
+        }
+      }
+      if(SmokeDetector has general && self.path_ptr==-1) {
+        move self to Office1;
+        self.path_ptr=0;
+      }
+      if(self.path_ptr>-1) {
+        MovePersonDir(self, self.&path-->(self.path_ptr));
+        switch(parent(self)) {
+        Corridor5:
+          give SmokeDetector ~general;
+          if(player in Corridor5) {
+            Comments.make_busy(self);
+            self.domission=0;
+            LoopOverScope(self.CheckCigarette, player);
+            print "^Schwartz stands below the smoke detector and jumps \
+                  towards it. His index finger hits the red button and \
+                  the detector turns silent at once. He looks around, ";
+            if(self.domission>0 && self.domission.burning) {
+               print "sees the lit cigarette, and orders you to put it out. You obey.^";
+               self.domission.stop_burn();
+            } else { 
+               print "as if expecting to find something burning, but seeing no such thing he sighs deeply.^";
+            }
+            self.domission=false;
+          }
+          ++self.path_ptr;
+        Office1:
+          self.path_ptr=-1;
+        default:
+          ++self.path_ptr;
+        }     
+      }
+    ],
+    life [;
+      Give, Show:
+        if(noun==VideoGame) "~I prefer DOOM. More action.~";
+        if(noun==Sphere) { Sphere.revealed(Schwartz); rtrue; }
+        if(noun ofclass Cigarette || noun==Packet) {
+         remove noun;
+         print_ret "~Why, thank you!~ He puts ", (the) noun, " in his pocket.";
+        }
+      Answer:
+        wn=consult_from;
+        <<Ask self NextWord()>>;
+      Ask, Tell:
+        switch(second) {
+        'gun','guns','ammo','ammunition','weapons','weapon':
+          "~Weapons are what really sets us apart from the animals, you know. \
+            Monkeys don't have Magnums, and that's probably something we \
+            should be grateful for.~";
+        'sphere', 'alien', 'aliens':
+          "~Why do you ask? It's not your business.~";
+        'computer','pc','user','account','password', 'login':
+          "~Ms. Henkel is the PC user administrator. Ask her.~";
+        'parrot': "~Have you seen Dr. Williams' parrot yet?~";
+        'henkel', 'maria': "~She's the sweetest spinster around.~";
+        'dandruff': "~Someone should buy Mr Fulham a decent shampoo.~";
+        'arnold', 'schwarzenegger', 'schwartzenegger': "~He is cool.~";
+        'terminator': "~It was a good movie, but T2 was even better.~";
+        't2': "~The best movie I ever saw.~";
+        'commando': "~A good movie, but I prefer T2.~";
+        'last': "~T2 was better.~"; ! Last Action Hero
+        'dog', 'dogs', 'doberman', 'dobermann':
+          "~I'm always telling Dr. Williams that we need a guard dog here. \
+          Something like Ms. Neubaum's dog would do. Have you seen it yet?~";
+        'ase', 'project': "~Well, you tell me. You are the scientist.~";
+        'hello', 'hi', 'good': "~Hi~";
+        'personal', 'access', 'code', 'codes', 'number':
+          "~When you get your access code from Dr. Williams I will \
+          reprogram the door to the security lab.~";
+        default:
+          "Schwartz pretends not to hear your question.";
+        }
+      Attack: "That would certainly bring you into trouble.";
+      Kiss: "He might misunderstand such a gesture \
+            of friendliness.";
+      default:
+        if(Schwartz in Office1)
+          "Still looking intensivly at the monitor, Schwartz \
+          simply ignores you.";
+        "Schwartz ignores you.";
+    ],
+    orders [;
+    Hello: <<Ask self 'hello'>>;
+    ],
+    path_ptr -1,
+!    path (n_to) (w_to) (w_to) (w_to) (n_to) (n_to) (e_to) (w_to)
+!      (s_to) (s_to) (e_to) (e_to) (e_to) (s_to),
+    path (n_to) (e_to) (n_to) (n_to) (s_to) (s_to) (w_to) (s_to),
+  has animate proper;
+
+Walker Williams "Dr. Williams"
+  with number 0,
+    name "dr." "dr" "ronald" "williams" "president" "man",
+    speed 100,
+    domission false, ! He actually does a few missions, but manually.
+    mission_list misTalkToHenkel 100,
+    will_drink_tea false,
+    initial [;
+      if(self in WilliamsOffice) { 
+        "Dr. Williams is working behind the desk.";
+      } else "Dr. Williams is here.";
+    ],
+    description
+      "Long and slim, middle-aged and strong-looking, \
+      Dr. Williams seems to be enjoying a good health and \
+      a comfortable life.",
+    orders [x; ! always understand GIVE ME WHISKY and GIVE WHISKY TO ME
+    Hello: <<Ask self 'hello'>>;
+    Yes: <<Ask self 'yes'>>;
+    No:  <<Ask self 'no'>>;
+    Give, GiveR, GiveLiquidR, GiveLiquid:
+      if(noun==player && (second ofclass Whisky || second==WhiskyBottle))
+        if(self.number==6 or 11) <<Ask self 'whisky'>>;
+        if(self.number==2 or 7 or 8)
+          "~Get yourself a glass first,~ Dr. Williams replies.";
+        if(self.number>0)
+          "~Coming right up,~ Dr. Williams replies.";
+    NotUnderstood: 
+      x=false;
+      wn=consult_from;
+      if(NextWord()=='give' && NextWord()=='me' &&
+         NextWord()=='whisky') x=true;
+      wn=consult_from;
+      if(x==false && NextWord()=='give' && NextWord()=='whisky' &&
+         NextWord()=='to' && NextWord()=='me') x=true;
+      wn=consult_from;
+      if(x==false && NextWord()=='give' && NextWord()=='me' &&
+         NextWord()=='whiskey') x=true;
+      wn=consult_from;
+      if(x==false && NextWord()=='give' && NextWord()=='whiskey' &&
+         NextWord()=='to' && NextWord()=='me') x=true;
+
+      if(x) {
+        if(self.number==6 or 11) <<Ask self 'whisky'>>;
+        if(self.number==2 or 7 or 8)
+          "~Get yourself a glass first,~ Dr. Williams replies.";
+        if(self.number>0)
+          "~Coming right up,~ Dr. Williams replies.";
+      }
+    ],
+    before [;
+    ShakeHands: "You shake hands.";
+    ],
+    life [;
+     ThrowAt:
+      if (noun==Glass && self.number==1 or 2 or 7 or 8) {
+        move Glass to Desk3;
+        "He catches the glass gracefully and puts it on the desk with a laugh.";
+      }
+     Give, Show:
+       if(noun==VideoGame) "~I don't have time for games.~";
+       if(noun==Sphere) { Sphere.revealed(Williams); rtrue; }
+       if(noun ofclass Cigarette || noun==Packet)
+         "~Thank you, but I try to cut down on smoking.~";
+
+       if(noun==Glass && (self.number==1 or 2 or 7 or 8)) {
+         move Glass to Desk3;
+         rtrue;
+       }
+     Answer:
+      wn=consult_from;
+      <<Ask self NextWord()>>;
+     Ask, Tell:
+      if((second=='glass' or 'drinking') && TestScope(Glass) &&
+         ~~Testscope(Glass, Williams)) <<Give Glass self>>;
+
+      switch(second) {
+      'hello', 'hi', 'good': "~Hello~, Dr. Williams replies.";
+      'yes', 'ok', 'y', 'affirmative': if(self.number==2) "~Great. I'll be waiting here.~";
+      'no', 'negative', 'n', 'sorry':
+        if(self.number==2)
+          "~Come on, the glasses are easy to find. Just look in \
+            the top drawer in the kitchen. I'm waiting here.~";
+      'computer','pc','user','account','password', 'login':
+        "~Ms. Henkel is the PC user administrator. Ask her.~";
+      'sphere', 'alien', 'aliens':
+        "~Who have you been talking to? This is all top secret, at least \
+          until we know more.~";
+      'john', 'fulham':
+        "~A good man. We met in Paris a long time ago. We are now writing a \
+        report on the ASE project, and I hope you will proof-read it for \
+        us later.~";
+      'stefan', 'lumbis': "~It was a pity he left so suddenly.~";
+      'petra', 'neubaum': "~I'm looking forward to seeing her results.~";
+      'henkel', 'maria': "~I'm totally satisfied with her work.~";
+      'schwartz', 'thomas': "~He's good at what he does, what more can I \
+        expect?~";
+      'ase', 'project', 'work', 'job':
+         "~It is an exciting project, isn't it? I think we'll have a \
+         break-through any day, and your help will be indispensible.~";
+      'report': "~I'll let you know when it is finished.~";
+      'paris':
+         "~Oh, those were the days!  John and I had a great time together. \
+         Exciting research all day, and partying all night. This was all \
+         before I met my wife, of course.~";
+      'wife':
+        "~She doesn't like the isolation here, so she stays at home. \
+        I try to visit here in the weekends.~";
+      'dog', 'dogs', 'doberman', 'dobermann':
+         "~Well, Petra is the dog fanatic here. I prefer parrots.~";
+      'parrot','parrots':
+         "~I must show you my parrot sometime. He is really \
+         intelligent and learns new words all the time.~";
+      'personal', 'access', 'code', 'codes', 'number':
+        "~There is not much to say about the access codes \
+        besides what is written in the security regulations. \
+        You will receive a code later when \
+        you have begun your research.~";
+      'whiskey', 'whisky':
+        if(self.number==11) "~Someone has wasted my only bottle of whisky.~";
+        if(self.number==6) {
+          StartDaemon(self);
+          self.number=7;
+          "~We just had some. But, ok, just one more glass.~";
+        }
+        "~I don't drink much, but I enjoy a glass of whisky every now and then.~";
+      default:
+      print_ret (string)
+        random(
+               "Williams seems to be too concentrated to take notice.",
+               "~Later... I have some work to be done first,~ \
+               Williams replies.",
+               "~Ask Ms. Henkel instead,~ Williams says.");
+      }
+    ],
+    react_before [;
+      Yes: if(self.number==2) <<Ask Williams 'yes'>>;
+      No, Sorry: if(self.number==2) <<Ask Williams 'no'>>;
+    ],
+    daemon [ conts nonconts x temploc pcloc;
+      if(location==WilliamsOffice && TestScope(self)) {
+        if(player in Chair3 || player in Desk3) {
+          PlayerTo(parent(Chair3),1);
+          print "^~Oh, you shouldn't be sitting there! It's so darn \
+            uncomfortable!~ says Dr. Williams and pulls you to your feet, \
+            somehow making it look casual.^";
+          Comments.make_busy(self);
+        }
+        temploc=parent(self);
+        move self to WilliamsOffice;
+        x=child(Chair3);
+        if(x>0) {
+          print "^~My oh my~, says Dr. Williams, ~what a mess!~. He then \
+            moves ";
+          WriteListFrom(child(Chair3),ENGLISH_BIT+DEFART_BIT);
+          print" from the chair to the desk.^";
+          while(child(Chair3)>0)
+            move child(Chair3) to Desk3;
+          Comments.make_busy(self);
+        }
+        move self to temploc;
+        
+        if(location==WilliamsOffice && TestScope(self)) {
+          objectloop(x in Desk3 && x~=WhiskyBottle && x~=Glass &&
+                     x~=SignedPaper && (x ofclass AutoComputer)==false) {
+            if(x has container && child(x)>0 &&
+               (child(x) ofclass Liquid)==false)
+              conts=true;
+            else
+              nonconts++;
+          }
+        }
+        if(conts || (nonconts>0)) {
+          Comments.make_busy(self);
+          print "^Dr. Williams turns to the desk, and says: ~Now, let's see, \
+            what have we got here?.";
+          if(conts) {
+            print " He empties ";
+            objectloop(x in Desk3 && x has container && child(x)>0 &&
+                       (child(x) ofclass Liquid)==false) {
+              print (the) x;
+              give x open;
+              give x ~locked;
+              while(child(x)>0)
+                move child(x) to Desk3;
+              break;
+            }
+            print " onto the desk, looking quite delighted.";
+          }
+          temploc=parent(Glass);
+          x=parent(WhiskyBottle);
+          pcloc=parent(Pc3);
+          remove Glass;
+          remove WhiskyBottle;
+          remove Pc3;
+          print " ~Well, we certainly won't be needing ";
+          if(conts || (nonconts>1))
+            print "these";
+          else
+            print "this";
+          print"~ he says, handing you ";
+          WriteListFrom(child(Desk3),ENGLISH_BIT+DEFART_BIT);
+          while(child(Desk3)>0)
+            move child(Desk3) to player;
+          print ".^";
+          move Pc3 to pcloc;
+          move WhiskyBottle to x;
+          move Glass to temploc;
+        }
+      }
+        
+      switch(self.number) {
+      0:
+        if(TestScope(self)) {
+          self.number++;
+          move WhiskyBottle to self;
+          Puzzles.DoneHint(WhatNextPuzzle, 3); 
+          Comments.make_busy(self);
+          "^Dr. Williams greets you, ~Good of you to come, I've got a paper \
+          you must sign. But first we'll have a welcome drink. You're \
+          not a teetotaler, are you?~. You assure him that this is not \
+          the case. He picks up a bottle of whisky and begins searching \
+          for something else.";
+        }
+        rtrue;
+      1:
+        if(TestScope(self)) {
+          self.number++;
+          if(TestScope(Glass,self)) 
+          {
+            Comments.make_busy(self);
+            print "^Dr. Williams looks a bit confused and says \
+              ~Well, I'd say... You brought a glass!~.^";
+            self.daemon();
+            rtrue;
+          }
+          else {
+            Comments.make_busy(self);
+            "^Dr. Williams faces you, ~Damned, I forgot to bring a glass \
+            for you. Could you get it? There are glasses in the upper \
+            drawer in the kitchen.~";
+          }
+        }
+        rtrue;
+      2:
+        if(TestScope(Glass,self)) {
+          move Glass to Desk3;
+          self.number++;
+          if(TestScope(self)) {
+            Achieved(15);
+            Comments.make_busy(self);
+            "^~Good job~, says Dr. Williams. He fills your glass with \
+            whisky, and fills a glass for himself. ~I propose a toast \
+            for science and your success!~, he says and you drink \
+            the delicious liquid. Naturally, you must propose a toast \
+            in return. After these formalities are over Dr. Williams \
+            starts searching for something in his desk.";
+          }
+        }
+        rtrue;
+      3:
+        self.number++;
+        move WhiskyBottle to Desk3;
+        if(TestScope(self)) {
+          Comments.make_busy(self);
+          print "^With a somewhat irritated voice, Dr. Williams admits that he \
+          has forgotten the paper you are to sign at the reception. \
+          ~I'm so absentminded. Wait here, while I fetch it,~ he says \
+          and puts the whisky bottle on the desk.^";
+        }
+        rtrue;
+      4:
+        ! While walking to Henkel
+        self.pursuemission();
+        if(self in Entrance) {
+          self.&mission_list-->0=misGotoWilliams;
+        }
+        if(self in WilliamsOffice && SignedPaper in self)
+          self.number++;
+        if(self.mission_nr>-1) {
+          if(self in Entrance) {
+            move SignedPaper to self;
+            if(TestScope(self)) {
+              Comments.make_busy(self);
+              print "^Dr. Williams and Henkel are discussing something. They \
+                speak too low for you to hear what it's all about.^";
+              if(self.mission_action==actWaitTurns && self.mission_substep>3)
+                self.mission_substep=3;
+              if(self.mission_substep==1) {
+                print "^Henkel takes a paper from her desk and hands it over \
+                  to Dr. Williams.^";
+                self.pursuemission();
+              }
+            }
+          }
+        }
+        rtrue;
+      5, 10:
+        if(WhiskyBottle notin Desk3 && TestScope(WhiskyBottle,self)) {
+          move WhiskyBottle to Desk3;
+          if(TestScope(self)) {
+            Comments.make_busy(self);
+            print "^Dr. Williams grabs the whisky bottle and puts it on the desk.^";
+          }
+        }
+        if(WhiskyBottle in Desk3 || WhiskyBottle in WilliamsOffice) {
+          if((child(WhiskyBottle) ofclass Whisky ||
+              child(WhiskyBottle) ofclass Tea) &&
+              child(WhiskyBottle).quantity>2) {
+
+            ! Bottle is here, filled with tea or whisky
+              if(TestScope(self) && player in Chair3) {
+                move player to WilliamsOffice;
+                print "^Caught sitting in Dr. Williams' chair you \
+                      quickly rise.^";
+              }
+              StopDaemon(self);
+              remove WhiskyBottle;
+              if(self.number==5) {
+                self.number=6;
+                if(child(WhiskyBottle) ofclass Tea) Achieved(16);
+                if(TestScope(self)) {
+                  move SignedPaper to player;
+                  Comments.make_busy(self);
+                  "^Dr. Williams sits down behind the desk and puts a paper in \
+                  front of you. He says, ~Here are the \
+                  centre's security regulations. Read them carefully. \
+                  Could you sign that bottom line?~. He hands you a pen \
+                  and you sign the desired line. He takes back his pen and \
+                  tears off the lower half of the paper. ~So, that's it. \
+                  Excuse me now, I've some work to be done,~ Dr. Williams says \
+                  as he takes the whisky bottle and puts it in the desk \
+                  together with his piece of the paper.";
+                } else
+                  move SignedPaper to Desk3;
+              } else {
+                move Glass to Desk3;
+                if(self.will_drink_tea) {
+                  self.number=11;
+                  if(TestScope(self)) {
+                    Comments.make_busy(self);
+                    "^Dr. Williams sits down behind the desk puts your glass in front \
+                    you. He fills your glass and takes a sip of his own. His face twists and \
+                    he spits out the liquid. ~What is this? This is not whisky! Tastes \
+                    more like tea,~ he exclaims. Pleading your innocense, there is not \
+                    much else for him to do than putting the glass and the bottle in \
+                    his drawer, muttering to himself.";
+                  }
+                }
+                self.number=6;
+                if(child(WhiskyBottle) ofclass Tea) Achieved(16);
+                if(TestScope(self)) {
+                  Comments.make_busy(self);
+                  "^Dr. Williams sits down behind the desk and puts your glass in front \
+                  of you. He fills your glass and you drink, talking \
+                  a little about the weather and local gossip.^^\
+                  ~Excuse me, I still have some work to do,~ Williams finally says \
+                  and puts the whisky bottle in his desk.";
+                }
+              }
+          } else {
+            ! Bottle empty or filled with other liquid
+            deadflag=3;
+            if(TestScope(self)) {
+              Comments.make_busy(self);
+              "^Dr. Williams looks dismayed at the whisky \
+              bottle. He yells, ~You couldn't keep from the whisky, \
+              could you? You lousy boozer! I want you off my \
+              centre immediately~ He calls Schwartz, who escorts \
+              you down to your car again, telling you not to come \
+              back.";
+            } else {
+              Comments.make_busy(self);
+              "^Schwartz comes up to you and says, ~Dr. Williams sent me \
+              to escort you off the grounds. He told me to tell you \
+              that he doesn't want to have thieves around his centre~. \
+              Your protests are in vain, and you are led to your car, \
+              with the advice not to come back again.";
+            }
+          }
+        } else {
+          ! Bottle removed from the room
+          deadflag=3;
+          if(TestScope(self)) {
+            Comments.make_busy(self);
+            "^Dr. Williams sits down behind the desk again. He is just \
+            about to give you a paper when he discovers that the \
+            bottle he left on the desk has disappeared. His face \
+            turns bloodred and he says threatening to you, \
+            ~Ok, give me my whisky back!~. Your hesitation about \
+            what to do is a little too long, so he shouts for a man \
+            named Schwartz, who immediately comes running. ~Hold \
+            that thief under observation and call the police~, \
+            Dr. Williams orders Schwartz. You now have small chances of \
+            fulfilling your quest.";
+          } else {
+            Comments.make_busy(self);
+            "^Dr. Williams comes up to you, followed by Schwartz, and \
+            grabs your shirt sleeve. Excited, he spits the words \
+            right at your face, ~Damned spy! Schwartz has called \
+            MIT to check your identity. You are not Hans Leibach! \
+            What are you here for? The new data over the ASE project, \
+            or what? And you took my last bottle of whisky too, \
+            damned!~. Schwartz grabs you by the other arm, and you \
+            are led to captivity.";
+          }
+        }
+     ! new chance to get the whiskey!
+      6, 11: rtrue;
+      7, 8: ! preparing the glass
+        if(TestScope(Glass, self)==false) {
+          if(self.number==7) {
+            self.number=8;
+            Comments.make_busy(self);
+            "^~Where did you put your glass?~ Dr. Williams asks.";
+          }
+        } else {
+          Comments.make_busy(self);
+          objectloop(x in WhiskyBottle)
+            if((x ofclass Whisky)==false) self.will_drink_tea=true;
+
+           if(child(Glass) ofclass Tea || child(Glass) ofclass Whisky) {
+              move child(Glass) to DestructionRoom;
+              if(self.will_drink_tea ) {
+                print "^Dr. Williams gets his whisky bottle, fills his glass, then seems \
+                       surprised to find your glass already filled and says ~Oh, didn't you finish \
+                       your last drink? Well, cheers then.~ After taking a sip from his own glass his \
+                       face twists and he spits out the liquid. ~What is this? This is not whisky! Tastes \
+                       more like tea,~ he exclaims. Pleading your innocense, there is not \
+                       much else for him to do than putting the glass and the bottle in \
+                       his drawer, muttering to himself.^";
+                self.number=11;
+              } else {
+                print "^Dr. Williams gets his whisky bottle, fills his glass, then seems \
+                       surprised to find your glass already filled and says ~Oh, didn't you finish \
+                       your last drink? Well, cheers then.~ You finish your drinks, talking  a little \
+                       about the local sights.^^\
+                       ~Excuse me, I still have some work to do,~ Williams finally says \
+                      and puts the whisky bottle in his desk.^";
+                self.number=6;
+             }
+           } else {
+             remove Glass;
+             move WhiskyBottle to Desk3;
+             if(children(Glass)>0) {
+               print "^Dr. Williams gets his whisky bottle, fills his glass, and is \
+                     just about to fill yours as well when he sees that it isn't empty, \
+                     and says, ~No, this won't do. I'll go to the kitchen and wash your glass.~";
+             } else {
+               print "^Dr. Williams gets his whisky bottle, fills his glass, and is \
+                     just about to fill yours as well when he says ~No, this won't \
+                     do. Your glass is filthy. I'll go to the kitchen and wash it.~";
+             }
+              print " Absentmindely he puts the bottle on the desk, picks up the glasses \
+                        and rises from his chair.^";
+             self.number=9;
+             self.mission_nr=-1;
+             self.&mission_list-->0=misGotoKitchen;
+             self.pursuemission();
+           }
+        }
+      9: ! going to the kitchen and back
+        self.pursuemission();
+        if(self in Kitchen) {
+          self.&mission_list-->0=misGotoWilliams;
+        }
+        if(self in WilliamsOffice) self.number=10;
+        if(self in Kitchen && TestScope(self)) {
+          Comments.make_busy(self);
+          print "^Dr. Williams washes your glass in the sink.^";
+        }
+      }
+    ],
+  has animate proper;
+
+Walker John "John"
+  with
+    name "john" "fulham" "man" "person",
+    drunk 0,
+    describe [;
+      if(self.introduction(false)) rtrue;
+      if(self.drunk>0) {
+        "^John lies drunk over his desk.";
+      }
+    ],
+    introduction [arrived_flag;
+      self.introduction=$ffff;
+      Puzzles.PuzzleSeen(WhiskyPuzzle);
+      if(arrived_flag) {
+        "^A middle-aged man enters the room. He introduces himself as \
+        John Fulham and welcomes you to the centre.";
+      }
+      "^There is a middle-aged man here. He introduces himself as \
+      John Fulham and welcomes you to the centre.";
+    ],
+    description [;
+      if(self.drunk>0)
+        "John is very drunk. He is lying over his desk, muttering
+        to himself.";
+      "John Fulham is a squat man in his fifties. \
+      He seems friendly enough, but maybe a bit shy. You \
+      can't help but noticing the slight trembling of his right \
+      hand. This, and the tell-tale red nose, makes you suspect \
+      that John may have some problems handling alcohol.^^\
+      The poor man also seems to have problems with dandruff. His \
+      dark hair is peppered with white spots.";
+    ],
+    speed 70,
+    mission_list misTalkToHenkel 10 misResearch 30 misSnack 10
+      misGotoLoo 10 misReadBook 10 misGotoWilliams 3
+      misGotoPetra 10 misGotoJohnSelf 20 misGotoSchwartz 5
+      misGotoCellarStore 20,
+    before [;
+    ShakeHands: "John heartily shakes your hand.";
+    ],
+    orders [;
+    Hello: <<Ask self 'hello'>>;
+    ],
+    life [x;
+     Ask, Tell:
+      self.freeze_one_turn=true;
+      if(self.drunk>0) {
+        if(second=='personal' or 'access' or 'code' or 'codes' or 'password' or 'number') {
+          Puzzles.PuzzleSolved(WhiskyPuzzle);
+          Achieved(2);
+          print "First John ignores you and you think that he didn't \
+          hear you. Then he abruptly says ~";
+!          EnglishNumber(ElectronicLock.&codes-->2);
+          print ElectronicLock.&codes-->2;
+          "~ and nothing more.";
+        } else {
+          "John is too drunk to care about you.";
+        }
+      }
+      switch(second) {
+      'hello', 'hi', 'good':
+        print_ret (string) random("~Oh, hello!~", "~Nice to meet you~", "~How do you do?~");
+      'sphere', 'alien', 'aliens':
+        "~How do you know that? It is supposed to be secret.~";
+      'dandruff': "Surely John must know about that already?";
+      'computer','pc','user','account','login':
+         "~Ms. Henkel is the PC user administrator. Ask her.~";
+      'alcohol', 'whisky', 'whiskey':
+         "~I haven't touched any whiskey in six months!~";
+      'wife': "~Oh, that was a long time ago. I rarely think about those \
+        times nowadays. I'd rather look forward.~";
+      'petra', 'neubaum', 'stefan', 'lumbis':
+         "~It was an official secret that Petra and Stefan were having an \
+         affair, but then Stefan left. Petra hasn't been herself since. She \
+         just keeps working harder than ever, but never says anything. I'm \
+         a bit worried about her.~";
+      'dog', 'dogs', 'doberman', 'dobermann':
+         "~Petra knows all about dogs, ask her.~";
+      'schwartz', 'thomas': "~We kind of got off to a bad start, but he's \
+        really okay I guess. As he said himself, he couldn't know I wasn't \
+        trafficking drugs.~";
+      'henkel', 'maria': "~Oh, she's nice. She could really use a man though. \
+        But don't tell her I said so. Under all that make-up, she's a \
+        sensitive girl.~";
+      'dr', 'williams':
+         "~We first met in Paris, where we worked together and had a good time. \
+         It's great being able to work together again, after so many years.~";            
+      'ase', 'project', 'job', 'machine', 'complicated', 'experiments', 'chemical':
+        "John immeditialy starts explaining something, using a language so \
+        filled with technical terms that you can't understand anything.";
+      'personal', 'access', 'code', 'codes', 'password', 'number':
+        "~Those codes for the security lab are terribly secret, you know. \
+        I guess you'll get one as well pretty soon.~";
+      'parrot','bird': "~Dr. Williams is a bird lover. Personally, I don't \
+        care much for animals. I find them too demanding.~";
+      'castle': "~Just don't go there. Or go there but don't get caught. \
+        Or go there and get caught and make up a good explanation. No, \
+        the best thing is to just stay away. Why on earth would \
+        you want to go there anyway?~";
+       default:
+        print_ret (string) random(
+          "John seems to be too concentrated to take notice.",
+          "~Later... I have some work to do first,~ \
+           John replies.",
+          "~Ask Ms. Henkel instead,~ John says.");
+      }
+     Answer:
+      wn=consult_from;
+      <<Ask self NextWord()>>;
+     Give, Show:
+      if(self.drunk>0) "John is too drunk to care about you.";
+      if(noun==VideoGame) "~Well thanks, but I'm not really into video games.~";
+      if(noun==Sphere) { Sphere.revealed(John); rtrue; }
+      if(noun ofclass Cigarette || noun==Packet)
+        "~Thank you, but I don't smoke.~";
+
+      x=child(noun);
+      if(noun ofclass Bottle && x) {
+        StopDaemon(self);
+        give HeavyDoor ~open;
+        move self to JohnsOffice;
+        PlayerTo(JohnsOffice,1);
+        Comments.make_busy(self);
+        print "John looks at you as if you were a saint. ~Is it for \
+          me?~ he asks. You nod. He grabs ",(the) noun," and says \
+          ~Thank you, thanks, thanks... Let's have a drink. \
+          My office!~ He rushes away and you follow him. Inside \
+          the office, he shouts ~A toast!~ and knocks back ",(the) x;
+        if(x ofclass Whisky) {
+          remove noun;
+          print ". He looks stupidly at the empty ",(name) noun," and says, \
+            ~Oh, I'm terribly sorry. There's nothing left for you.~ \
+            You assure him that it doesn't matter. ";
+          if(x.quantity>2) {
+            print "In the course of the next thirty minutes \
+                John transforms from a sober gentleman to a sluring drunk \
+                telling rude jokes, until he simply collapses over his desk.^";
+            self.drunk=20;
+          }
+          else {
+            StartDaemon(self);
+            "You small-talk a while with John, who at first seems even more \
+            relaxed and friendly than usual. However, as the alcohol wears \
+            off, he glances at the watch and says he has to get on with his \
+            research.";
+          }
+        }
+        else {
+          StartDaemon(self);
+          ". With a disgusted look on his face, he spits it out again, all \
+          over the room. ~What is this~, he says, ~",(name) x,"? \
+          Revolting!~ He hands you back ", (the) noun, ".";
+        }
+        rtrue;
+      }
+     default: if(self.drunk>0) "John is too drunk to care about you.";
+    ],
+  has animate proper;
+
+Walker ServiceMan "service man"
+  with 
+    number 0,
+    domission false,
+    name  "service" "man",
+    initial [;
+      "You see a service man.";
+    ],
+    introduction [arrived_flag;
+      self.introduction=$ffff;     
+      if(arrived_flag) {
+        "^A service man in dirty overalls enters the room.";
+      }
+      "^There is a man wearing oily overalls here. Probably a service man.";
+    ],
+    description [;
+      "The man is dressed in oily overalls, wearing tools such as \
+      screw-drivers and nippers in his pockets."; ],
+    life [;
+      if(self.number<9) {
+        if(self hasnt general) {
+          give self general;
+          print "^The service man seems very surprised to find another \
+            person here. He asks for your name and why you are here. You \
+            reply the first thing which comes to you, which is that your \
+            car has broken done and you need help. The service man is \
+            clearly suspicious, but says he has to make a brief visit to \
+            a research centre, using the cableway. He says he will help \
+            you with your car when he returns.^";
+        } else print "^The service man gives you a suspicious look.^";
+        if(player in Cabin or CabinLadder) {
+          move player to parent(Cabin);
+          print "^The service man insists on you leaving the cable car. \
+                You obey.^";
+        }
+        return 2;
+      } else if(self.number<15) {
+        deadflag=3;
+        if(self has general)
+          "^The service man is quite surprised to see you again. \
+          He shouts to the receptionist to call security, and before \
+          you have a chance to escape a burly man comes running. \
+          Schwartz, the security guard, thinks it most suspicious to find \
+          a stranger with a broken car wandering around in a \
+          high-security area and calls the police.";
+
+        "^The service man is quite surprised to find another person here. \
+        He shouts to the receptionist to call security, and before \
+        you have a chance to escape, a burly man comes running. Schwartz, \
+        the security guard, thinks it most suspicious to find a stranger \
+        wandering around in a high-security area and calls the police.";
+      } else {
+        deadflag=3;
+        if(self has general)
+          "^The service man asks you to come with \
+          him to the parking area. He is obviously a skilled mechanic, \
+          and it doesn't take him long to confirm that your Ford is \
+          in perfect working order. Having become even more suspicious
+          as to your reasons for being here, he carefully watches \
+          as you drive away from the centre. It is clear that you will \
+          not get a second chance to help the aliens.";
+        "^The service man seems very surprised to find another person here. \
+        He asks for your name and why you are here. You reply the first \
+        thing which comes to you, which is that your car has broken done \
+        and you need help. The service man asks you to show him the car \
+        and sticking to your story you follow him to the parking area. \
+        He is obviously a skilled mechanic, and it doesn't take him long \
+        to confirm that your Ford is in perfect working order. Clearly \
+        suspicious, he sees you driving away from the centre. \
+        You will not get a second chance to help the aliens.";
+      }
+    ],
+    detect_player [;
+       if(TestScope(self)) {
+        if(parent(player)==parent(self) ||
+           (player in CabinLadder && self in Cabin)) {
+          return self.life();
+        }
+      }
+    ],
+    daemon [;
+      if(deadflag>0) rtrue;
+      if(self.detect_player()==true) rtrue; ! Don't return if false or 2
+      self.number++;
+      switch(self.number) {
+      4:
+        give WorkshopDoor ~locked;
+        if(TestScope(WorkshopDoor)) {
+          "^Someone unlocks the door.";
+        }
+      5:
+        MovePersonDir(self, n_to); ! Opens the door
+        self.detect_player();
+!        if(self in CabinHall && player in CabinHall)
+!          self.life();
+      6:
+        if(self in WorkShop) MovePersonDir(self, n_to);
+        if(location==CabinHall) {
+          if(self in CabinHall && player in CabinHall)
+            self.detect_player();
+!            self.life();
+          else {          
+            give WorkshopDoor ~open;
+            Comments.make_busy(self);
+            "^The service man looks around, as if he expected to \
+            see someone in here. You hear him mutter to himself, \
+            ~... thought someone knocked on the door... Oh well, time \
+            to quit anyway.~ He takes another look around before closing \
+            the door.";
+          }
+        }
+      7:
+        if(Cabin in CabinHall) {
+          move self to Cabin;
+          if(location==CabinHall) {
+            Comments.make_busy(self);
+            print "^The service man enters the cable car.^";
+            self.detect_player();
+            rtrue;
+         }
+        } else {
+          self.number=17;
+          if(location==CabinHall) {
+            Comments.make_busy(self);
+            "^The service man seems very surprised to find the cable car gone.";
+          }
+
+        }  
+      8:
+        give CabinPanel general;
+        if(location==CabinHall) {
+          Comments.make_busy(self);
+          "^The service man turns toward the control panel. \
+          Unfortunately, he's blocking your sight, so you can't \
+          see what he's doing. The result of his activity, on the \
+          other hand, is easy to observe; the cable car trembles and starts \
+          to move.";
+        }
+      9:
+        move_cabin(CabinHall2);
+        if(location==CabinHall && (player in CabinLadder || 
+            player in Cabin || player in CabinRoof)) {
+          print "^You can't avoid observing \
+            that the ravine floor is about 50 metres below, and you feel \
+            a slight dizziness. A few minutes later, the journey comes to \
+            an end as the cable car enters another terminal, similar to the \
+            one you just left.^";
+          PlayerTo(parent(player),2); ! to update references & look around.
+        }
+      10:
+        move self to CabinHall2;
+        if(location==CabinHall2) {
+          print "^The service man leaves the cable car.^";
+          self.detect_player();
+        }
+      11:
+        MovePersonDir(self, n_to); ! first open the door
+        if(self in CabinHall2) MovePersonDir(self, n_to);
+        self.detect_player();
+      12:
+        if(location==CabinHall2) {
+          "^You can hear conversation from the north, although you \
+          can't make out what they are saying.";
+        }
+      13:
+        MovePersonDir(self, s_to); ! first open door
+        if(self in Entrance) MovePersonDir(self, s_to);
+        self.detect_player();
+      14:
+        if(Cabin in CabinHall2) {
+          move self to Cabin;
+          if(location==CabinHall2) {
+            print "^The service man enters the cable car again.^";
+            self.detect_player();
+          }
+        } else {
+          self.number=13;
+          if(location==CabinHall2) {
+            Comments.make_busy(self);
+            "^The service man is waiting impatiently for the cable car \
+            to appear again.";
+          }
+        }
+      15:
+        move_cabin(CabinHall);
+        if(location==CabinHall2 && (player in CabinLadder ||
+            player in Cabin || player in CabinRoof))
+          PlayerTo(parent(player)); ! to update references & look around.
+       16:
+        if(location==CabinHall) {
+          Comments.make_busy(self);
+          print "^The service man presses some buttons on the panel.^";
+        }
+        give CabinPanel ~general;
+       17:
+        move self to CabinHall;
+        if(location==CabinHall) {
+          print "^The service man leaves the cable car.^";
+          self.detect_player();
+        }
+       18:
+        MovePersonDir(self, e_to); ! move to Outside Building
+        self.detect_player();
+       19:
+        MovePersonDir(self, se_to); ! Move to Parking Area
+        self.detect_player();
+       20:
+        if(location==ParkingArea or Garage or FrontOfBuilding) {
+          print "^The service man waits a while on the parking until \
+            he (and you) hears a car approaching. A pretty blonde opens \
+            the passenger door and the service man enters. The car \
+            turns around, and is lost in the blizzard.^";
+        }
+        StopDaemon(self);
+        remove self;
+      }
+    ],
+  has animate;
+
+Talker Parrot "parrot"
+  with
+    name "parrot" "ara" "bird" "southamerican" "south" "american"
+      "jungle" "talking" "blue" "yellow" "plumage" "neat" "polly",
+    initial [;
+      give self moved;
+      "There is a parrot here, which looks quite excited to get some \
+      company. It jerks its head up and down, looking closely at you.";
+    ],
+    description "The parrot is an Ara. Its blue and yellow plumage \
+       looks very neat. It's sitting on a sturdy wooden branch.",
+    said_nothing true,
+    life [first last i k len c firstchar;
+    Give, Show:
+      if(noun==Seeds) {
+        remove Seeds;
+        "The parrot happily consumes ", (the) Seeds, ".";
+      }
+    Ask, Tell:
+      self.said_nothing=false;
+      if(second == 'code' or 'codes' or 'access' or 'personal' or 'password' or 'number') {
+        Puzzles.PuzzleSolved(ParrotPuzzle);
+        Achieved(4);
+        print_ret "The parrot makes a perfect imitation of a telephone \
+          signal, then it says ~Yeah? Yes, I destroyed it, like you told me. \
+        Of course I remember the code. It was ",ElectronicLock.&codes-->1,
+          ". Sure. Ha, ha. Bye!~";
+      }
+      else if(random(100)<40 || consult_from<1 || consult_words<1)
+        "The parrot gives you an odd look, as if he was actually pondering \
+        what you just said.";
+      else {
+        print (string) random("The parrot gives you a stern look and says ~",
+                              "The parrot chuckles loudly and screams ~",
+                              "The parrot walks up and down his branch \
+                                yelling ~",
+                              "With a sudden movement, the parrot starts \
+                                jumping up and down, shouting ~",
+                              "The parrot gives you a keen look, and says ~",
+                              "The colourful bird spreads out his wings as he exclaims ~",
+                              "Tilting his head, the parrot says ~");
+        
+        first = consult_from + random(consult_words) - 1;
+        last = first + random(consult_words - first + consult_from) - 1;
+        firstchar=true;
+        for(i=first:i<=last:i++) {
+          k=WordAddress(i); len=WordLength(i);
+          for(c=0:c<len:c++) {
+            if(firstchar) {
+              print (Cchar) k->c;
+              firstchar=false;
+            }
+            else {
+              print (char) k->c;
+            }
+          }
+          if(i<last) print " ";
+        }
+
+        "!~";
+      }  
+    Answer:
+      <<Ask self noun>>;
+    ],
+    before [;
+    Touch, Tickle:
+      "The parrot pecks viciously at your hand, and you desist quickly.";
+    ShakeHands: "Parrots are unable to shake hands.";
+    Take, Remove: "The parrot hops to the other end of the branch.";
+    ],
+    each_turn [;
+      Puzzles.PuzzleSeen(ParrotPuzzle);
+      if (self.said_nothing && (random(100)<70)) {
+        print "^The parrot says ~",
+          (string) random("How do I get beyond the mirror box?",
+                          "Put that gun away, Josh.",
+                          "Dig ten yards south of the old oak tree.",
+                          "...and the worms ate into his brain.",
+                          "Go ahead punk, make my day.",
+                          "Purchase the past!",
+                          "Don't tell anyone about this, it's top secret.",
+                          "This will make a great pangalactic gargleblaster.",
+                          "Polly wants a cracker.",
+                          "Shut up you gabbering heap of feathers!",
+                          "Fifteen ghosts on a dead man's coffin.",
+                          "This is an ex-parrot."),"~^";
+      };
+      self.said_nothing=true;
+    ],
+  has animate; ! should have neuter, but the library is too old
+
+Object DummyDog "dog"
+  with
+    name "large" "dog" "doberman",
+    life [; "The dog is inside the apartment, you are outside."; ],
+    before [;
+    Examine:
+      "There is a huge Doberman standing inside the apartment, glaring back \
+      at you through the panorama window. It is a mean dog, so you'd better \
+      proceed with care.";
+    default: return self.life();
+    ],
+  has animate scenery; ! should have neuter, but the library is too old
+
+Object DummyDog2 "dog"
+  with
+    name "large" "dog" "doberman",
+    life [;
+      if(TerraceWindow has open)
+        "The dog is preoccupied with the meat. You prefer to leave it that way.";
+      "The dog is outside the closed panorama window.";
+    ], 
+    before [;
+    Examine:
+      if(TerraceWindow has open)
+        "The dog standing in the snow on the terrace, sniffing at the meat.";
+      "The dog stands at the closed panorama window, howling furiously.";
+    default: return self.life();
+    ],
+  has animate scenery; ! should have neuter, but the library is too old
+
+Talker Dog "dog"
+  with
+    name "dog" "doberman" "large",
+    describe [;
+      if(himobj==DummyDog) himobj=Dog; 
+      if(OuterLivingRoom hasnt visited) {
+        move DummyDog to Terrace;
+        Puzzles.PuzzleSeen(DogPuzzle);
+        "^In front of you, you have a large Doberman. He shows his \
+          teeth and begins snarling at you.";
+      } else
+        if(Dog hasnt general)
+          "^The dog watches your every movement.";
+      rfalse;
+    ],
+    number 0,
+    delay 0,
+    description [;
+      move Necklace to OuterLivingroom;
+      move NecklaceBox to OuterLivingroom;
+      "It is a very muscular dog, with impressive teeth almost constantly \
+      exposed. The black fur is shiny and it's obvious that this dog is \
+      well looked after. Around the neck is a metal necklace.";
+    ],
+    react_before [;
+      Ask, Tell, Answer: rfalse;
+      default:
+        if((Overalls notin player || Overalls hasnt worn) &&
+         (noun==Necklace or NecklaceBox || noun in NecklaceBox))
+        "The dog shows all its teeth as it snarls at you. You don't dare \
+        to approach the beast.";
+    ],
+    life [; 
+    Order: "The dog doesn't obey you.";
+    Tell, Answer, Ask: "~Bow-wow!!!~";
+    Attack: "A look at the dog's razor-sharp teeth makes you desist.";
+    Give, ThrowAt:
+      if(noun==Meat) {
+        move Meat to location;
+        "The dog first eagerly grabs the meat, but being a smart dog \
+        he soon remembers that his mission is to guard the apartment from \
+        intruders such as you. He drops the meat and flashes a set of sharp \
+        teeth in your direction.";
+       }
+    Show: "Well, now you certainly got the dog's full attention.";
+    ],
+    before [;
+     Kiss, Touch, Tickle, ShakeHands: "This dog is not in the mood for games.";
+     Take, Remove:
+      if(Dog has general && verb_word=='throw') <<Push Dog>>;
+      if(Overalls has worn)
+        print_ret (The) Overalls, " may protect you against the dog's bite, \
+          but we are still dealing with a strong and heavy Doberman here.";
+      "Your death-wish will get you in trouble some day.";
+     Push, PushDir:
+      if(Dog has general) {
+        if(TerraceWindow has open) {
+          move dog to Terrace;
+          move DummyDog2 to location;
+          if(himobj==Dog) himobj=DummyDog2; 
+          "Silently you approach the dog. It is distracted by the \
+          smell of meat, and reacts a little too late. You grab \
+          the dog's legs and push it out the window.";
+        } else {
+          "Through the closed window? Try again!";
+        }
+      }
+      "That would be less than courteous, not to mention dangerous.";
+    ],
+    daemon [;
+      if(location==Terrace && self in Terrace) {
+        deadflag=1;
+        "^Mad beyond belief about being tricked the dog makes a \
+        furious attack. Nothing less than a gun could stop the \
+        monster, and the last thing you feel is sharp teeth against \
+        your throat.";
+      }
+      if((Meat has general) && (Dog hasnt general)) {
+        give Dog general;
+        "^The dog runs up to the window.";
+      }
+      if(Dog in Terrace && TerraceWindow hasnt open && 
+         player in OuterLivingroom)
+        "^You hear howling from outside.";
+       if(Meat has general && Dog in OuterLivingroom &&
+          location==OuterLivingroom) {
+        if(self.number ~= 4 && TerraceWindow has open) {
+          self.number++;
+          "^The dog is standing at the window, its front paws on the \
+          windowsill, sniffing at something outside.";
+        }
+        give Dog ~general;
+        give Meat ~general;
+        self.number = 0;
+        "^The dog loses interest in the meat and returns to its \
+        guard duty.";
+      }
+      if(Dog in Terrace && TerraceWindow has open) {
+        if(self.delay == 0) {
+          self.delay = 1;
+          rtrue;
+        }
+        move Dog to OuterLivingroom;
+        self.delay = 0;
+        give Dog ~general;
+        give Meat ~general;
+        remove DummyDog2;
+        if(himobj==DummyDog2) himobj=Dog; 
+        "^Barking furiously the dog jumps back into the room again. \
+        He doesn't appear to be pleased with your tricks.";
+      }
+    ],
+  has animate; ! should have neuter, but the library is too old
+
+Object -> Necklace "necklace"
+  with
+    name "necklace",
+    description [;
+      print "The dog bites deep into your arm as you approach it, \
+        but the coveralls provide good protection. The sheer force of the \
+        bite is painful, but not more than you can stand. \
+        While the dog makes new frustrated attacks, you take a closer \
+        look at the necklace. It's a simple chain made out of some \
+        yellowish metal. One link stands out from the others -- a small \
+        flat box, no larger than the other links.^";
+    ],
+    before [;
+    Take, Remove:
+      "You reach for the lock on the necklace but as you do so the dog \
+      jerks its head back and you lose your grip.";
+    ],
+  has concealed;
+
+Object -> NecklaceBox "small box"
+  with
+    name "box" "small" "link" "flat" "compartment" "clasp",
+    description [;
+      print "Calling it a box is perhaps overstating matters a \
+        little, it's a small, flat compartment on the necklace where a \
+        plate for the dog's name usually is. Perhaps its name is very \
+        secret.";
+      if (NecklaceBox has open) {
+        if(SmallNote in NecklaceBox)
+          " There is a small note inside the box.";
+        else
+          "";
+      }
+      " The box is locked with a clasp.";
+    ],
+    before [;
+    Open, LetGo, Examine, Search:;
+    default:
+      "The dog jerks about furiously, and you loose your grip.";
+    ],
+  has container openable concealed static;
+
+Burnable -> -> SmallNote "small note"
+  with
+    name "burning" "note" "small",
+    will_burn_turns 2,
+    description [;
+      Puzzles.PuzzleSolved(DogPuzzle);
+      Achieved(5);
+      print_ret "A very small piece of paper, just fitting into the small
+        box. There is some writing on it but you doubt that this is actually \
+        the name of this mad beast. I mean, 666 would be an excellent name \
+        but on the paper is written the number ",ElectronicLock.&codes-->3,".";
+    ];
+
+[ InitPeople t h i j n;
+    ! **** Init Mission index
+  t=Missions-->0-2;
+  h=Mission_index-->0; !  *** Highest allowed mission number
+  j=-1; !                 *** Highest mission number
+  for(i=0:i<=t:i++)
+    if(Missions-->i==0) {
+      n=Missions-->(i+1); ! *** Mission number
+      if(n>j) j=n;
+      if(n<=h)
+        Mission_index-->n=i+1;
+      else {
+        print "Illegal Mission#: ",n,"!^";
+        deadflag=1;
+        break;
+      }
+    }
+  Mission_index-->0=j;
+
+  move Petra to Kitchen;
+  move Henkel to Entrance;
+  move Schwartz to Office1;
+  move Williams to WilliamsOffice;
+  move John to JohnsOffice;
+  move ServiceMan to Workshop;
+  move Parrot to LivingRoom2;
+  move Dog to OuterLivingRoom;
+
+  #IFDEF DEBUG;
+  ! In release version, Henkel is started when player reaches upper cabin hall
+  StartDaemon(Henkel);
+  ! Henkel starts Comments, which starts NPC's in release version
+  Petra.startup();
+  John.startup();
+  Schwartz.startup();
+  Williams.startup();
+  #ENDIF;
+];
+
+

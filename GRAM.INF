@@ -1,0 +1,747 @@
+! ============ NEW GRAMMAR ====================
+
+#IFNDEF DEBUG;
+Verb meta "gonear" "purloin" "scope" "tree"
+  *                       -> DebugComment
+  * ConTopic              -> DebugComment;
+[ DebugCommentSub; "A hollow voice says ~Hardly.~"; ];
+#ENDIF;
+
+[ Exitable ;
+  if(player in noun) rtrue;
+  rfalse;
+];
+
+Extend only "leave" first 
+		* noun=Exitable -> Exit;
+
+Verb "threaten"
+   * creature                    -> Threaten
+   * creature "with" held -> Threaten;
+[ ThreatenSub; "Violence isn't the answer to this one."; ];
+
+Verb "levitate" "fly"
+  *                       -> Levitate
+  * noun                  -> Levitate;
+[ LevitateSub; "Fat chance."; ];
+
+! Silly objects don't need to be held before trying to eat them.
+Extend "eat" replace
+    * noun                -> Eat;
+[ EatSub;
+  if(noun has animate && noun~=player)
+    print_ret (The) noun, " violently resists being eaten alive.";
+  if (noun hasnt edible) return L__M(##Eat,1);
+  if(noun notin player) {
+    <Take noun>; new_line;
+    if(noun notin player)
+      print_ret "You need be holding ", (the) noun, " before you can eat it.";
+  }
+  remove noun;
+  if (AfterRoutines()==1) rtrue;
+  if (keep_silent==1) rtrue;
+  L__M(##Eat,2,noun);
+];
+
+[ WrittenText i; ! double-quotes have already been removed.
+  i=wn; if(NextWordStopped()==-1) { wn=1; rfalse; }
+  for(wn=i: NextWordStopped()~=-1: ++i) {
+    wn=i; if(NextWord()=='on' && NextWordStopped()~=0) {
+      wn=i; rtrue;
+    }
+    wn=i;
+  }
+  wn=i; rtrue;
+];
+
+Verb "change"
+  * noun               -> Change;
+[ ChangeSub; "That is not something which you can change."; ];
+
+Verb "write" "scribe"
+  * WrittenText "on" noun             -> WriteOn
+  * WrittenText "on" noun "with" held -> WriteOn;
+[ WriteOnSub; "Someone might be upset if you did that."; ];
+
+Verb "play"
+  * noun                  -> Play
+  * "with" noun           -> PlayWith;
+[ PlaySub; "There's not a musical instrument in sight."; ];
+[ PlayWithSub;
+  if(noun==player) "Silly you.";
+  if(noun has animate)
+    print_ret (The) noun, " is not interested in playing with you.";
+  "Gee, that was fun!";
+];
+
+Extend "kiss" last
+  * noun                  -> KissObj;
+[ KissObjSub; "Well, sure, you like ", (the) noun,
+  ", but your relationship is definitely platonic."; ];
+
+Verb "diagnose" "health"
+  *                       -> Diagnose;
+[ DiagnoseSub;
+  "Your health is good, but you feel a bit worried about your family."; ];
+
+Verb meta "hello" "hi"
+  *                       -> Hello
+  * creature              -> Hello;
+[ HelloSub; "Please use the form ~say hello to <someone>~ instead."; ];
+
+Verb meta "xyzzy" "frotz" "gnusto" "plugh" "rezrov"
+  *                       -> Magic
+  * ConTopic              -> Magic;
+Extend only "hello" first
+  * "sailor"              -> Magic;
+[ MagicSub; "Nothing happens. Maybe in another time, another game..."; ];
+
+Verb "learn" "memorize" "remember"
+  * noun                  -> Memorize
+  * ConTopic              -> Memorize;
+[ MemorizeSub; "You'd better keep notes instead."; ];
+
+Verb "flush"
+  * noun                  -> Flush;
+[ FlushSub; "It's your brain that needs flushing."; ];
+
+Verb "cry" "weep"
+  *                       -> Cry;
+[ CrySub; "You don't have the ability to produce tears on demand.";];
+
+Verb "point"
+  * "at" noun             -> Point
+  * "at" noun "with" noun -> Point;
+[ PointSub; "Nothing happens."; ];
+
+Verb "tickle" "brush"
+    * creature             -> Tickle
+    * creature "with" held -> Tickle;
+[ TickleSub;
+  if(noun==player) "It's more fun when someone else is doing the tickling.";
+  "Keep your hands to yourself!";
+];
+
+Verb "arrest"
+  * creature              -> Arrest;
+[ ArrestSub; "Don't be silly."; ];
+
+Verb "ascend" "descend"
+  * noun                  -> Climb;
+
+Verb "follow" "chase" "pursue" "trail"
+  * noun                  -> Follow
+  * ConTopic              -> Follow;
+[ FollowSub;
+  if(noun==player) "You can't follow yourself.";
+  if(TestScope(noun)) print_ret (The) noun, " is right in front of you.";
+  META=1; "Type a direction instead.";
+ ];
+
+Verb "hide"
+  * "in" noun             -> Enter
+  * "under" noun          -> Enter
+  * "behind" noun         -> Enter;
+
+Verb "piss" "pee"
+  *                       -> Pee
+  * "off"                 -> Strong;
+[ PeeSub; "You don't have to go wee-wee at the moment."; ];
+
+Verb "time" "date"
+  *                       -> Time;
+[ TimeSub; "You have no means of telling the time."; ];
+
+Extend only "date" first
+  * creature              -> DateSomeone
+  * "with" creature       -> DateSomeone;
+[ DateSomeoneSub; "Your wife wouldn't be too happy."; ];
+
+Extend only "shout" last
+  *                        -> Scream;
+Verb "scream" "yell"
+  *                        -> Scream
+  * ConTopic "to" creature -> Answer;
+[ ScreamSub x;
+  print "~Aaaarrrrgggghhhh!~";
+  objectloop(x in location && x has animate && x~=player)
+    if(random(10)<7) print_ret " ", (The) x, " seems surprised of your outcry.";
+  new_line;
+];
+
+Verb "sigh"
+  *                        -> Sigh;
+[ SighSub; "Cheer up! There is a solution to every problem."; ];
+
+[ WhereTopic; if(scope_stage==3) "Beats me."; rfalse; ];
+[ FindTopic; if(scope_stage==3) "Do it yourself!"; rfalse; ];
+Verb "where"    * "is" "my"  scope=WhereTopic -> WhereQuery
+                * "is"       scope=WhereTopic -> WhereQuery
+                * "are" "my" scope=WhereTopic -> WhereQuery
+                * "are"      scope=WhereTopic -> WhereQuery
+                * "am"       scope=WhereTopic -> WhereQuery;
+Verb "find"     * "my"       scope=FindTopic  -> WhereQuery
+                *            scope=FindTopic  -> WhereQuery;
+Extend "search" * "for" "my" scope=FindTopic  -> WhereQuery
+                * "for"      scope=FindTopic  -> WhereQuery;
+[ WhereQuerySub;
+  if(noun==player) "You're here.";
+  if(NestedIn(noun, player)) "You have it.";
+  "Right in front of you.";
+];
+
+[ WhatTopic i;
+  if(scope_stage==1) rfalse;
+  if(scope_stage==3) "Good question. Try asking someone.";
+  objectloop (i in questions) PlaceInScope(i); rtrue;
+];
+Verb meta "what" "who" ! "a" and "an" are needed to parse correctly
+  * "is" "a"            scope=WhatTopic   -> WhatQuery
+  * "is" "an"           scope=WhatTopic   -> WhatQuery
+  * "is" "my"           scope=WhatTopic   -> WhatQuery
+  * "is"                scope=WhatTopic   -> WhatQuery
+  * "are" "a"           scope=WhatTopic   -> WhatQuery
+  * "are" "an"          scope=WhatTopic   -> WhatQuery
+  * "are" "my"          scope=WhatTopic   -> WhatQuery
+  * "are"               scope=WhatTopic   -> WhatQuery
+  * "was" "a"           scope=WhatTopic   -> WhatQuery
+  * "was" "an"          scope=WhatTopic   -> WhatQuery
+  * "was" "my"          scope=WhatTopic   -> WhatQuery
+  * "was"               scope=WhatTopic   -> WhatQuery
+  * "am"                scope=WhatTopic   -> WhatQuery;
+[ WhatQuerySub; print_ret (string) noun.description; ];
+
+Extend "listen"
+  * "at" noun                 -> Listen;
+
+[ AHeldContainerObject;
+  if(parent(noun)~=0 && parent(noun) in player && (parent(noun) has open || noun ofclass Liquid))
+    rtrue;
+  rfalse;
+ ];
+[ DropHeldContainerObjectSub   p;
+  p=parent(noun);
+  if(noun ofclass Liquid) {
+    print "(", (the) p, ")^";
+    <<Drop p>>;
+  }
+  move noun to player;
+  <<Drop noun>>;
+];
+Extend "drop" first * noun=AHeldContainerObject -> DropHeldContainerObject;
+
+Extend "look"
+  * "behind" noun                    -> LookUnder
+  * "on" noun                 -> Search;
+
+Verb "extinguish"
+  * noun                      -> Extinguish;
+[ ExtinguishSub; "Not on fire."; ];
+
+Verb "borrow"
+  * noun                           -> Borrow;
+[ BorrowSub; print_ret "Come on, be the devil. Just take ", (the) noun, "."; ];
+
+[ ALitHeldCigarette; ! print "+",noun,"+";
+  if(noun ofclass Cigarette && noun.burning && noun in player) rtrue;
+  rfalse;
+];
+[ ALitCigarette; ! print "*",noun,"*";
+  if(noun ofclass Cigarette && noun.burning) rtrue;
+  rfalse;
+];
+
+Verb "smoke"
+  * noun=ALitHeldCigarette          -> Smoke
+  * noun=ALitCigarette              -> Smoke
+  * noun                            -> Smoke;
+[ SmokeSub; "There is no tobacco around."; ];
+
+[ CigToBurn; if(noun ofclass Cigarette && noun in player) rtrue; rfalse; ];
+
+Extend "burn" first
+  * noun=CigToBurn                -> Burn;
+
+
+Verb "drive"
+  * noun                          -> Drive;
+[ DriveSub;
+  if(noun in Compass) {
+    if(player in Car || player in Scooter) <<Go noun>>;
+    if(player in location) "Try sitting in a vehicle next time.";
+    "You look silly trying to drive in ", (the) parent(player), ".";
+  } else {
+    if(player in location) "You must enter ", (the) noun, " first.";
+    if(noun==Car or Scooter && player in noun)
+      "Say where you want to go instead.";
+    "You look silly trying to drive ", (a) noun, ".";
+  }
+];
+
+Verb "start"
+  * noun                                  -> Switchon;
+
+Verb "stop"
+  * noun                                  -> Switchoff;
+
+[ TypeableNoun;
+  if(noun==ElectronicLock || noun ofclass AutoComputer) rtrue;
+  rfalse;
+];
+Verb "type"
+  * special "on" noun=TypeableNoun        -> TypeOn
+  * special "on" noun                     -> TypeOn;
+Extend only "enter" last
+  * special "on" noun=TypeableNoun        -> TypeOn
+  * special "on" noun                     -> TypeOn;
+Extend "press" last
+  * special "on" noun=TypeableNoun        -> TypeOn;
+[ TypeOnSub; <SetTo second noun>; ];
+
+Extend only "set" last
+  * "fire" "to" noun                        -> Burn;
+
+[ NotWorn; if(noun hasnt worn) rtrue; rfalse; ];
+Extend "remove" first
+  * noun = NotWorn                         -> MyRemove;
+[ MyRemoveSub; <<Take noun>>; ]; ! <<Remove noun parent(noun)>>; ];
+
+[ NoKeyNoun;
+  if(noun==BathroomDoor or MakeupBag || noun ofclass AutoDoorWithLock)
+    rtrue;
+  rfalse;
+];
+
+Verb "force"
+  * noun "open" "with" held               -> Unlock;
+Extend "lock" first
+  * noun=NoKeyNoun                        -> Lock;
+Extend "unlock" first
+  * noun=NoKeyNoun                        -> UnlockNoKey;
+[ UnlockNoKeySub; "You can't unlock it."; ];
+
+[ LiquidNoun; if(noun ofclass Liquid) rtrue; rfalse; ];
+Extend "throw"
+  * noun=LiquidNoun "to" creature        -> GiveLiquid
+  * held "to" creature                        -> Give
+  * held "through" noun                        -> ThrowAt;
+Extend "give" first
+  * creature noun=LiquidNoun                -> GiveLiquidR
+  * noun=LiquidNoun "to" creature        -> GiveLiquid
+  * "over" noun=LiquidNoun "to" creature -> GiveLiquid;
+[ GiveLiquidSub; <Give (parent(noun)) second>; ];
+[ GiveLiquidRSub; <Give (parent(second)) noun>; ];
+
+Verb "tug" = "pull";
+Verb "withdraw" "retract" "lift" "elevate" = "pull";
+Extend "pull"
+  * noun "with" held                -> PullWith
+  * noun "open" "with" held         -> PullWith;
+Extend only "tug" first
+  * "at" noun                       -> Pull
+  * "at" noun "with" held           -> PullWith;
+Extend "push"
+  * noun "with" held                -> PullWith;
+[ PullWithSub; "That seems pointless."; ];
+
+Verb "slide"
+  * noun                            -> Push
+  * held "into" noun                -> Insert
+  * held "through" noun             -> Insert;
+
+Extend "put"
+  * "out" noun                      -> Extinguish
+  * held "down" noun                -> Insert
+  * held "at" noun                  -> Raise
+  * held "to" noun                  -> Raise
+  * held "against" noun             -> Raise;
+Verb "lower"
+  * held "into" noun                -> Insert;
+Verb "hang" = "put";
+Verb "grab" = "take";
+Verb "raise"
+  * held "at" noun                         -> Raise
+  * held "to" noun                         -> Raise
+  * held "against" noun                 -> Raise;
+[ RaiseSub; "That seems pointless.";];
+
+Extend "stand"
+  * "in" noun                       -> Enter;
+
+Verb "stroke" "pet"
+  * noun                            -> Touch;
+
+Verb "tear"
+  * noun                            -> Cut
+  * "up" noun                       -> Cut
+  * "down" noun                     -> Cut;
+
+Extend "cut"
+  * noun "with" noun                          -> CutWith;
+[ CutWithSub; <<Cut noun>>; ];
+
+[ ARope; return (noun ofclass Rope); ];
+[ ATiedObject x;
+  objectloop(x ofclass Rope)
+    if(x.&tie_to-->0==noun || x.&tie_to-->1==noun) rtrue;
+  rfalse;
+];
+Verb "detach" = "remove";
+Extend "detach" first
+  * noun=ARope                     -> Untie
+  * noun=ATiedObject               -> UntieObj;
+Verb "untie" "disconnect"
+  * noun=ARope                     -> Untie
+  * noun=ATiedObject               -> UntieObj
+  * noun                           -> NotTied;
+[ UnTieSub; "You can't untie something which isn't tied."; ];
+[ UntieObjSub x; <<UntieObj x noun>>; ];
+[ NotTiedSub; print_ret "There is nothing tied to ", (the) noun, "."; ];
+
+Verb "connect"
+  * noun "to" noun                         -> ConnectTo;
+[ ConnectToSub; <<Tie noun second>>; ];
+
+Extend "take"
+  * noun "in" noun                        -> TakeIn
+  * noun "using" noun                        -> TakeIn
+  * noun "with" noun                        -> TakeIn
+  * multiinside "in" noun                -> Remove;
+[ TakeInSub;
+  if(actor==player) 
+  {
+    if(noun ofclass Liquid) {
+      if(second notin player) {
+              print "(first taking ",(the) second,")^"; 
+              <Take second>;
+      }
+      if(second in player)
+              <<FillWith second noun>>;
+      else
+        rtrue;
+    }
+    else
+      "I fail to see how that would help.";
+  }
+];
+
+Extend "fill"
+  * noun "with" noun                         -> FillWith;
+[ FillWithSub;
+  if((noun ofclass Bottle)==false) {
+    if(noun has container) "There is no need to fill ", (the) noun, " with that.";
+    "How do you fill ",(a) noun,"?";
+  }
+  if((second ofclass Liquid)==false)
+    "I was expecting a liquid.";
+!  if(noun in player)
+!    <<TakeIn second noun>>;
+  <<Insert second noun>>;
+];
+
+
+Verb "pour"
+  * noun "into" noun                        -> Pour
+  * noun "in" noun                          -> Pour
+  * "out" noun                              -> PourSingle
+  * "out" noun "in" noun                    -> Pour
+  * "out" noun "into" noun                  -> Pour;
+[ PourSub;
+  if((noun ofclass Liquid)==false)
+    "As far as I know, you can only pour liquids.";
+  <<Insert noun second>>;
+];
+[ PourSingleSub  x;
+  if(~~(noun ofclass Liquid))
+    "As far as I know, you can only pour liquids.";
+  x=parent(noun);
+  <<Empty x>>;
+];
+
+Extend "turn"
+  * noun "with" held                        -> TurnWith;
+[ TurnWithSub; print_ret "Why do you need ",(the) second," to do that?"; ];
+
+Extend "remove"
+  * noun "using" held                        -> TakeIn
+  * noun "with" held                        -> TakeIn;
+
+Verb "wash"
+  * noun                                 -> Rub;
+
+Extend "press"
+  * noun "on" noun                        -> PressOn;
+[ PressOnSub;
+  if(noun in second) <<Push noun>>;
+  print "I can't see what you are referring to.^"; rfalse;
+];  
+
+
+Verb meta "help" "info" "about" "hint"
+  *                                         -> Help;
+
+Verb meta "dir" "ls" "ll"
+  *                                         -> DirJoke
+  * "-l"                                -> DirJoke;
+[ DirJokeSub;
+  "Volume in drive C has no label^\
+  Volume serial number is 0777-0948^\
+  Directory of C:^^\
+  851 088 664 bytes free.^^  
+  Sorry, all files have been deleted from disk.";
+];
+
+Extend "jump"
+  * "across" noun                         -> JumpOver
+  * "off"                                -> Exit
+  * "down"                                -> Exit
+  * "off" noun                                -> GetOff
+  * "down" "from" noun                        -> GetOff
+  * "through" noun                        -> Enter
+  * "in" noun                                -> Enter
+  * "into" noun                                -> Enter
+  * "onto" noun                                -> Enter
+  * "on" noun                                -> Enter
+  * noun                                -> Jump
+  * noun=ADirection                        -> Jump;
+[ JumpSub;
+  if(noun==0) {
+    if(actor==player && parent(parent(player))~=0) 
+    {
+      if(parent(player) has supporter)
+              "You don't want to fall off ", (the) parent(player),", now do you?";
+      else
+              "Your freedom of movement is somewhat limited by ",
+          (the) parent(player),".";
+    }
+    L__M(##Jump);
+    rfalse;
+  }
+  if(noun>=n_obj && noun<= sw_obj)
+    <<Go noun>>;
+  if(noun>0) <<Enter noun>>;
+  if(parent(player) has supporter)
+    <<GetOff (parent(player))>>;
+  print "What are you trying to achieve? Get productive!^";
+!  L__M(##GetOff);
+  rfalse;
+];
+
+Extend "throw"
+  * noun "at" noun             -> PushDir
+  * noun "through" noun        -> PushDir;
+
+Verb "knock" "bang"
+  * noun                       -> KnockOn
+  * "at" noun                  -> KnockOn
+  * "on" noun                  -> KnockOn
+  * noun "over"                -> Attack
+  * "over" noun                -> Attack
+  * "down" noun                -> Attack
+  * noun "down"                -> Attack
+  * "out" noun                 -> Attack
+  * noun "out"                 -> Attack;
+[ KnockOnSub;
+  if(noun has door) "There is no response.";
+  if(noun has animate) "Keep your hands to yourself!";
+  "That would be a pointless thing to do.";
+];
+
+Verb "slap" "strike" "pinch" = "hit";
+
+Verb "kick"
+  * noun                      -> Attack
+  * noun "at" noun            -> PushDir
+  * noun "through" noun       -> PushDir;
+
+Extend "ask" first
+                * creature "about" "her" ConTopic      -> Ask
+                * creature "about" "his" ConTopic      -> Ask;
+
+Extend only "put" last
+  * held "through" noun       -> ThrowAt;
+
+Verb "shake"
+  * "hands" "with" creature  -> ShakeHands
+  * creature                 -> ShakeHands
+  * noun                     -> Push;
+[ ShakeHandsSub; "Your handshake is politely declined."; ];
+
+Verb "use"
+  * noun                     -> Use;
+[ UseSub;
+  "Try to be more specific. \
+  Exactly how do you want to use ", (the) noun, "?";
+];
+
+Extend "fuck" first
+  * creature                 -> Fuck;
+Extend "screw" first
+  * creature                 -> Fuck;
+Extend "score"
+  * "with" creature          -> Fuck;
+[ FuckSub;
+  if(verb_word=='fuck' or 'screw' or 'score') {
+    if(noun==player) "How vulgar.";
+    "Unfortunately ", (the) noun, " doesn't seem interested.";
+  } else StrongSub();
+];
+
+Verb "rape"
+  * creature                 -> Rape;
+[ RapeSub; "Don't let your hormons get you into trouble."; ];
+
+Extend "go" first
+  * "to" ConTopic                        -> GoToRoom;
+[ Destination x w1 w2 r early; ! To parse a destination
+  r=0; ! Return value if no destination is found
+  if(consult_words<1) return r;
+  ! Find first real word
+  wn=consult_from;
+  while((w1=NextWordStopped())=='the' or 'of')
+    if(wn>=consult_from+consult_words)
+      break;
+  if(w1==-1) return r;
+  ! Find second real word
+  while((w2=NextWordStopped())=='the' or 'of')
+    if(wn>=consult_from+consult_words)
+      break;
+
+  early=false;
+  if(location<CabinHall2)
+    early=true;    
+  if(w2==-1) {
+    objectloop(x has visited && x provides singledest)
+      if(x.singledest==w1)
+        if((early==true && x<CabinHall2) || (early==false && x>=CabinHall2)) {
+          r=x;
+          break;
+        }
+  }
+  else {
+    objectloop(x has visited && x provides doubledest)
+      if(x.&doubledest-->0==w1)
+         if(x.&doubledest-->1==w2)
+                if((early==true && x<CabinHall2) || (early==false && x>=CabinHall2)){
+            r=x;
+            break;
+                }
+  }
+  return r;
+];
+[ GoToRoomSub x d;
+  d=Destination();
+  if(d==0) {
+    print "Please type ~goplaces~ or just ~gp~ to see what places you may \
+      be able to go to";
+    if(actor~=player)
+      ", or indeed ask other people to go to.";
+    META=1;
+    ".";
+  }
+  if(superparent(actor)==d) {
+    if(actor==player)
+      "Well, that was easy. You are already there.";
+    else
+      if(TestScope(actor))
+        print_ret "~Well, I'm here, aren't I?~", (the) actor, " says.";
+    rtrue;
+  }
+  
+  while(actor notin superparent(actor)) {
+    x=parent(actor);
+    if(actor==player)
+      print "(first leaving ",(the) x,")^";
+    if(x has supporter || (x has container && x has open))
+      <Exit>;
+    else {
+      if(actor==player)
+        print "I can't find an easy way to do that.";
+      rtrue;
+    }
+  }
+
+  ! Standing on our own feet 
+  
+!  print "Off we go to ",(name) d,"(",d,")!^";
+  
+  if(FindPath(parent(actor), d, actor)) {
+    if(actor==player)
+      "I'm afraid I can't find an easy way to get there.";
+    else
+      if(TestScope(actor))
+        print (The) actor," says: I'm not sure how to get there.^";
+    rtrue;
+  }
+  
+! Found a path
+
+  if(actor~=player && TestScope(actor))
+    print (The) actor, " says: I guess I can, if it makes you happy.^";
+  
+  actor.followpath=true;
+  actor.pathdest=d;
+  actor.mission_substep=actor.path_nr*PATHMAXLENGTH;
+
+  if(actor==player)
+    do_nothing(PATHMAXLENGTH);
+  else
+    StartDaemon(actor);
+  rfalse;
+];
+  
+Verb meta "goplaces" "gp"
+  *                                        -> GoPlaces;
+[ GoPlacesSub   x z area any word1; 
+  area=3;
+  if(location<CabinHall2) {
+    if(location<Road)
+      area=1;
+    else
+      area=2;
+    if(location==Road)
+      area=-1;
+  }
+        
+  objectloop(x has visited && (x provides singledest or doubledest) &&
+             x~=location)
+    if((area==1 && x<Road) ||
+       (area==2 && x>Road && x<CabinHall2) ||
+       (area==3 && x>=CabinHall2)) {
+      if(any==false) {
+        any=true;
+        print "You can go to the following places (using the names within \
+           parenthesis):^^";
+      }
+      if(x provides namedest) {
+        z=ZRegion(x.namedest);
+        switch(z) {
+         2:
+          RunRoutines(x,namedest);
+         3:
+          print (string) x.namedest;
+         default:
+          print (name) x;
+        }
+        print " (";
+      }
+      else
+              print (name) x, " (";
+      if(x provides singledest)
+        print (address) x.singledest;
+      if(x provides doubledest) {
+        if(x provides singledest) print ", ";
+          word1=x.&doubledest-->0;
+          if(word1=='surveilla')
+            print "surveillance";
+          else
+            print (address) word1;
+          print " ",(address) x.&doubledest-->1;
+      }
+      print ")^";
+    }
+  if(any==false)
+    print "There are no places you can go to at the moment.^";
+  rfalse;
+];
+

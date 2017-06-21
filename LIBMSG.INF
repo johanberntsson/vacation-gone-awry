@@ -1,0 +1,60 @@
+! Included before 'Include "Verblib";'
+
+#IFDEF OWN_VERSION;
+Object LibraryMessages "lm"
+  with
+    before [;
+     Burn:
+      if(noun==player)
+        "You don't feel very cold.";
+      if(noun has animate)
+        print_ret (The) noun, " rejects your offer. Anyway, it's illegal.";
+      "I don't think that was meant to be burnt.";
+     Look: ! print "LOOKING: ",lm_n,"^";
+           if (lm_n==1) { print "on"; rtrue; }
+           if (lm_n==2) { print "in"; rtrue; }
+           if (lm_n==3) { print "as"; rtrue; }
+           if (lm_n==4)
+           {   print "^On "; DefArt(lm_o);
+               WriteListFrom(child(lm_o),
+                   ENGLISH_BIT + RECURSE_BIT ! + PARTINV_BIT
+                   + TERSE_BIT + ISARE_BIT + CONCEAL_BIT);
+               ".";
+           }
+           if (lm_o~=location)
+           {   if (lm_o has supporter) print "^On "; else print "^In ";
+               DefArt(lm_o); print " you";
+           }
+           else print "^You";
+           print " can "; if (lm_n==5) print "also "; print "see ";
+           WriteListFrom(child(lm_o),
+                ENGLISH_BIT + WORKFLAG_BIT + RECURSE_BIT
+                ! + PARTINV_BIT
+                 + TERSE_BIT + CONCEAL_BIT);
+           if (lm_o~=location) ".";
+           " here.";
+      Strong: "That's in my passive vocabulary. It should be in yours too.";
+      Show:   
+        if (lm_n==1) {
+          "You could, if you were holding ", (the) noun, ".";
+        }
+           CDefArt(second); " hides ",(PronounGen) second," astonishment.";
+      Sing: "You remember the singing teacher telling you that everyone can \
+        sing. You also remember her taking it back.";
+      Take:
+        if (lm_n==10) "This is not the portable model. You have to pay extra for that.";
+        if (lm_n==11) "That stays put.";
+      Pull, Push, Turn:
+        if (lm_n==1) {
+          if(noun has pluralname) "They seem unmobile.";
+          "It seems unmobile.";
+        }
+        if (lm_n==2) "No can do.";
+        if (lm_n==4) {
+          if(noun==player) "The sum of all forces seem to be zero. You don't budge a centimeter.";
+          print_ret (The) noun, " isn't used to being pushed around.";
+        }
+        "You do. Not that it seems to change anything.";
+      default: rfalse;
+    ];
+#ENDIF;

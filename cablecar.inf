@@ -1,0 +1,1119 @@
+!################# Cablecar area start 
+
+
+Room Road "Mountain Road"
+  with description
+      [;
+      print "The car is standing on a narrow road, extending out of sight both to \
+      the north and south. Due to the raging blizzard, ~out of sight~ doesn't \
+      really say anything. A smaller road leads west.";
+      if(car notin location || car hasnt on)
+        "There are no other sounds than the hollow howling of the blizzard.";
+      "";
+      ],
+    w_to ParkingArea,
+    n_to [; "You reconsider the situation and realize that if you drive away, \
+      your wife and children will probably die."; ],
+    s_to [; "You reconsider the situation and realize that if you drive away, \
+      your wife and children will probably die."; ],
+    cant_go_msg "You are lucky to have a car that can travel the roads in this \
+                kind of weather. Leaving the road, however, is out of question.",
+    before [;
+    Exit: if ((player in car) && (car in road))
+      "It would be suicidal to get out of the car right in the \
+      middle of nowhere.";
+    Go: if(player in car && noun == w_obj && car has on) {
+      print "You think about your family and realize that you \
+        don't have a choice. You drive away to the west, \
+        up to the research centre.^";
+    }
+    ],
+  has light;
+
+Object -> The_Road "road"
+  with description "The road is covered with snow. It goes on straight into \
+      the whirling snow in front of you.",
+    name "road",
+  has scenery;
+
+Object Blizzard "blizzard"
+  with
+    name "snowstorm" "blizzard" "snow" "storm" "some",
+    description
+      "It's a really nasty blizzard, the worst one you have \
+      seen in years.",
+    found_in Road ParkingArea FrontOfBuilding CabinHall
+             RavineFloor Trail CabinHall2 Yard1 Yard2
+             BeforePoultry FrontOfRavine NarrowTrail
+             FrontOfShed Terrace DeadEnd NarrowTrack
+             BeforeCastle CastleEntrance Hallway2,
+  has scenery;
+
+Room ParkingArea "Parking Area"
+  with 
+  	name "snowcapped" "cars" "old" "tracks" "mountain",
+    description
+      "This is a large parking area, with a few snowcapped cars on it. \
+      Most of it has recently been cleared of snow, and there are \
+      some tracks leading to a building to the west. One entrance is to \
+      the southwest, probably a garage, and another to the northwest. To the \
+      north you can barely make out a mountain beyond a ravine. You'd \
+      might be able to make it down into the ravine, if you gave it your best.",
+    doubledest 'parking' 'area',
+    e_to [;
+      if(NestedIn(Sphere, player))
+        "That's one awfully long way to walk. Why not take the car instead?";
+      print "Going back to the aliens without the metal sphere would mean \
+        death to your family. ";
+      if(SecurityLab has visited)
+        "You don't dare to take that risk.";
+      "Your only hope is trying to find it, no matter how hard it may seem.";
+    ],
+    nw_to FrontOfBuilding, sw_to Garage, d_to trail, n_to trail,
+    w_to "A big snowdrift blocks your path in that direction, but there \
+      is an open yard to the northwest and an entrance to the southwest.",
+    in_to [;
+      if(car in self)
+        <<Enter Car>>;
+      else
+        <<Go sw_obj>>;
+    ],
+    cant_go_msg "Hey! There's a blizzard going on, in case you forgot.",
+    before [;
+    Go: if ((player in Car) && (noun ~= e_obj))
+      "This seems to be a suitable area for leaving your car.";
+      
+      if(player in Car && noun==e_obj && Car has on && nestedin(Sphere,Car))
+      {
+        Achieved(11);
+        deadflag=2;
+        print "You drive away from the research center and head \
+        back to the place where you met the aliens. When \
+        you approach the place the car suddenly stops again \
+        and you hear a familiar voice in the loudspeakers.^^\
+        ~According to our instruments you have found the \
+        sphere. Please put it on the roadside and get back \
+        into the car again.~^^\
+        You do as the voice tells you and when you are back \
+        in the car again you see a shape coming towards you \
+        through the blizzard. It makes a halt in front of the \
+        sphere, stretches out an arm, grabs the sphere, turns \
+        around and disappears in the whirling snow.^^\
+        ~We are most grateful, you have saved your planet \
+        from a great disaster and without you we would have \
+        been stuck in this place forever. Thank you.~^";
+        if(player.absorbed_radiation>20) {
+          print "^The aliens can continue to unknown destinations. \
+                Your fate is less fortunate however, since the sphere \
+                was quite radioactive, and your absorbed level is more \
+                than enough to cause fatal cancer within five years. \
+                Even so, you find some comfort in having saved your family.^";
+        } else {
+          print "^The aliens can continue to unknown destinations and \
+                you can return home, to enjoy the rest of the holiday with \
+                your family.^";
+        }
+        rtrue;
+      }
+      rfalse;
+    ],
+  has light;
+
+Object -> Mountain "mountain"
+  with
+    name "mountain" "mountainside",
+    before [;
+    Examine: "All you can see through the snow is a huge black silhouette.";
+    default: "The mountain lies further north, beyond the ravine.";
+    ],
+  has scenery;
+
+Object -> DummyRavineParking "ravine"
+  with
+    name "ravine",
+    description
+      "It lies a hundred metres or so from your current position. You can't \
+        see all that much from it through the whirling snow.",
+    before [;
+    Search: <<Examine noun>>;
+    Enter: <<Go n_to>>;
+    ThrownAt, Receive:
+      "The ravine too far away. Also, it seems stupid.";
+    JumpOver: "You know you could do it, but you'd probably crash into a pig \
+      in mid-air. Your mission is too important to take that risk.";
+    default: "What are you hoping to achieve? Go down into the ravine if it interests you.";
+    ],
+  has scenery container open;
+
+
+Object Tracks "tracks"
+  with name "recent" "tracks" "track",
+    description
+      "The tracks run from the building on the western side of the parking area. \
+      The most recent ones run to the northwestern entrance.",
+    found_in ParkingArea FrontOfBuilding,
+  has scenery;
+
+Object DummyCabinBuilding "building"
+  with name "wooden" "building" "station",
+    description
+      "It is a large wooden building, standing at the western side of the parking area.",
+    found_in FrontOfBuilding ParkingArea Garage CabinHall,
+    before [;
+    Enter:
+      if(location==FrontOfBuilding) <<Go in_obj>>;
+      if(verb_word=='leave' && location==Garage or CabinHall) <<Go out_obj>>;
+      "Give a direction instead.";
+    ],
+  has scenery;
+
+Room FrontOfBuilding "Outside Building"
+  with description
+      "You stand in front of a large wooden building, which has probably \
+      been used as a barn earlier, but seems to have been converted into a \
+      cableway-station. A wide track continues west into the building, and \
+      southeast, back to the parking area.",
+    se_to ParkingArea, w_to CabinHall, in_to CabinHall,
+  has light;
+
+Object CableHook "small hook"
+  with
+    name "small" "tiny" "metal" "hook",
+    description "It's a tiny metal hook.",
+    capacity 2,
+    before [;
+     Receive:
+      if((noun==CableKey or Note or Wrench)==false)
+        "It's a really tiny hook, only made for hanging up really tiny objects.";
+    ],
+  has supporter concealed static;
+
+Object -> CableKey "small key"
+  with 
+    name "small" "little" "old" "not" "worn" "very"
+      "rarely" "used" "metal" "key",
+    description "It is a small metal key. It looks rather old if not very \
+      worn. It's not too bold a guess that it is rarely used.",
+    before [;
+     Turn:
+      if(self in CabinKeyhole) {
+        if(player notin Cabin)
+          "The key is mounted in the keyhole at the side of the control panel. \
+          You can't reach it from here.";
+        if(CabinPanel hasnt general) {
+          give CabinPanel general;
+          "All the lights on the panel start flashing. After about three \
+          seconds, all go dark again. Then the button with the peculiar \
+           floor-opening icon starts emitting a steady red light.";
+              }
+        give CabinPanel ~general;
+        "As you turn the key back again, the panel goes dark.";
+      }
+      "You turn the key around. Feels good. Pointless, though.";
+    ];
+
+Room CabinHall "Cable Car Terminal"
+  with 
+  	lastsound 0,
+  	name "whistling" "whistle",
+    description [;
+      Puzzles.PuzzleSeen(EnterCentrePuzzle);
+      print "The south part of the room is occupied by a large concrete \
+        block emerging from the floor. A 2-inch wire, strongly attached \
+        to the concrete block, runs the length of the room and continues \
+        out through the large opening in the northern wall. The wire \
+        extends upwards at a low angle into the seemingly endless void \
+        of the snowstorm. A large doorway occupies the eastern wall, while \
+        there is a door with a sign next to it to the south.";
+      if(Cabin in self) print " A cable car is hanging from the wire.";
+      "";
+    ],
+    each_turn [;
+      if(ServiceMan in Workshop && WorkshopDoor hasnt Open && random(5)<2 &&
+      		self.lastsound<turns-3 && self.lastsound>=0) {
+        if(self.lastsound==0)
+          print "^You thought you could hear the faint sound of someone \
+          	whistling nearby. Or it could have been the wind.^";
+        else
+        	print "^There's that whistling sound again. It does sound like \
+        		someone whistling.^";
+        self.lastsound=turns;
+      }
+    ],
+    before [;
+    	Listen: if(noun==0 && ServiceMan in Workshop && WorkshopDoor hasnt Open)
+    		if(self.lastsound<0) "There's a faint whistling coming from the south.";
+    		else print_ret (string) random("You can't hear anything special, really.",
+    				"There seems to be a whistling sound coming from the south or west.",
+    				"There seems to be a whistling sound coming from the south or east.");
+    ],
+    singledest 'terminal',
+!    doubledest 'cable' 'hall',
+    e_to FrontOfBuilding, out_to FrontOfBuilding, s_to WorkshopDoor,
+    n_to  [;
+      if(self hasnt general) {
+         give self general;
+         "In the last moment, you discover that the ravine \
+         is in that direction, and that the fall would be \
+         more than enough to cause your death.";
+      }
+      "Not unless you can levitate.";
+    ],
+  has light;
+
+Object -> CabinHallSign "yellow sign"
+  with
+    name "yellow" "security" "certificate" "steel" "plate" "sign" "metal",
+    description "It is a yellow steel plate \
+      with a security certificate fixed on it. It states that this \
+      cable car has successfully passed every annual inspection that \
+      has been made. The last one seems to have been in September 1938.",
+    before [;
+     Take:
+      "It's attached to the wall with two sturdy nails at the top. \
+      It's not going anywhere.";
+     Remove, Turn, Push, Pull, Search, LookUnder:
+      if(self has general) {
+        print "There is a hook behind the sign.";
+        if(child(CableHook)) {
+          print " Hanging from the hook";
+          WriteListFrom(child(CableHook),ISARE_BIT+ENGLISH_BIT);
+          print ".";
+        }
+        "";
+      }
+      move CableHook to CabinHall;
+      give self general;
+      "As you tug at the sign, you discover that it can indeed be folded \
+      upwards, revealing a hook with a key hanging from it!";
+    ],
+  has concealed transparent;
+
+
+SceneryContainer -> Trunk "trunk"
+  with 
+    name "trunk" "old" "slightly" "worn",
+    describe [;
+    	"^There's an old trunk standing at the eastern wall.";
+    ],
+    description [;
+      print "It's an old, slightly worn trunk. ";
+      self.write_contents(true);
+      "";
+    ],
+    before [;
+    Take, Remove:
+      print_ret "Taking ", (the) self, " wouldn't pass unnoticed. \
+        You'd better leave it.";
+    ],
+  has ~static openable;
+
+Object -> -> Wrench "wrench"
+  with name "wrench"
+  has weird;
+
+Object -> LowerWire "wire"
+  with 
+   name "wire" "rope" "steel" "2-inch",
+    description
+      "This is the 2-inch steel wire from which the cable car \
+      hangs.",
+    before [;
+    Go:
+      if(player notin self)
+        "You are not standing on the wire.";
+
+      if(Bow in player) {
+        print "It takes some practice, but you find that it isn't too hard \
+          to walk on the wire, using the bow as a balance rod. Carefully, \
+          step by step, you begin crossing the ravine. As the wire starts \
+          to bend slightly upwards it becomes harder, but you still make \
+          good progress until you can glimpse another building in the swirling \
+          snow. Then disaster strikes. A sudden gust of wind makes you loose \
+          your balance and you tumble down from the wire. Dropping the bow, you \
+          desperately reach out for the wire, catching it with one hand in the \
+          last moment. You drag yourself up onto the wire, and crawl the last \
+          few meters to the upper terminal.^";
+        remove Bow;
+        PlayerTo(UpperWire);
+        rtrue;
+      } else if(self hasnt general) {
+        give self general;
+        "Carefully you step onto the wire. It's very difficult to \
+        keep the balance, but you are learning fast and soon your \
+        frantic body movements are being more and more controlled. \
+        Step by step, you are walking out of the building. As the \
+        wire begins to bend upwards, your difficulties increase and \
+        you must force yourself to the limit of your capabilities. \
+        Suddenly, halfway over the ravine, a gust of wind make you \
+        lose your balance and fall down. Desperately you reach out for the \
+        wire, and get a hold on it in the last moment! Whew, that was \
+        close. You drag yourself up onto the wire again and head down to
+        the terminal.";
+      } else {
+        deadflag=1;
+        "You carefully step onto the wire again, determined not to repeat the \
+        mistakes of last time. This time it is easier to keep the balance, and \
+        you make fast progress until that tricky part where the wire starts \
+        bending upwards. Step by step you slowly head upwards. Three metres, \
+        five metres... and you slip on an icy spot. Once again you reach for \
+        the wire, but this time it is too late. Seconds later, your body lies on \
+        the ravine floor.";
+      }
+    Enter:
+      if(noun==self && player in self) <<Go self>>;
+      if(player notin CabinRoof)
+        "The wire is mounted more than three metres above you.";
+      move player to self;
+      "You climb onto the wire.";
+    Climb: <<Enter self>>;
+    GetOff:
+      if(parent(self)==parent(CabinRoof)) {
+            move player to CabinRoof;
+            "You jump down onto the cable car roof again.";
+      }
+      move player to parent(self);
+      "You jump down from the wire. A brave move, since the wire is \
+      mounted almost three metres above the floor. Luckily, it all \
+      went well this time.";
+    ],
+    after [;
+    Receive: move noun to parent(self);
+      print_ret (The) noun, " falls down to the floor below.";
+    ],
+  has static enterable supporter concealed;
+
+[ move_cabin dest;
+  if(Cabin in dest) rfalse;
+  if(Cabin in CabinHall && superparent(player)==CabinHall && dest~=CabinHall)
+    print "^The cable car starts moving. Slowly at first, but \
+      gradually its speed increases. It leaves the terminal \
+      and begins crossing the ravine.^";
+
+  if(Cabin in CabinHall2 && superparent(player)==CabinHall2 &&
+     dest~=CabinHall2)
+    print "^The cable car starts moving again. It descends to the lower \
+      terminal.^";
+  else if(Cabin in CabinHall2 && superparent(player)==CabinHall &&
+         dest==CabinHall) {
+    print "^The cable car suddenly materialises in the snow outside the \
+      opening to the north. The humming stops as it comes to a halt \
+      in the middle of the hall.";
+    if(serviceman in Cabin) 
+      print " The man in the cable car seems too occupied with the controls to \
+        notice your presence.";
+    print "^";
+  }
+  else if(Cabin in CabinHall && superparent(player)==CabinHall2 &&
+         dest==CabinHall2) {
+    print "^The cable car suddenly materialises in the snow outside the \
+      opening to the south. The humming stops as it comes to a halt \
+      in the middle of the hall.";
+    if(serviceman in Cabin) 
+      print " The man in the cable car seems too occupied with the controls to \
+        notice your presence.";
+    print "^";
+  }
+
+  move Cabin to dest;
+  move CabinRoof to dest;
+  move CabinLadder to dest;
+  move CabinHatch to dest;
+  move CabinPanel to dest;
+  move CabinKeyhole to dest;
+];
+
+Object -> Cabin "cable car"
+  with
+    name "cabin" "cable" "car" "cab",
+    number 0,
+    describe [;rtrue;],
+    description
+      "The cable car hangs from a thick steel wire in the middle of the hall, \
+      gently rocking back and forth as the wind shakes the wire. It is quite \
+      small, and has openings on the short sides. There is a fairly \
+      complicated control panel mounted on one of the walls. You can also see \
+      a ladder leading up to a hatch set in the ceiling of the car.",
+    before [;
+    Receive: if(action_to_be==##PutOn) <<PutOn noun CabinRoof>>;
+    Switchon: <<Switchon CabinPanel>>;
+    Switchoff: <<Switchoff CabinPanel>>;
+    Enter:
+      if(player in CabinRoof) <<Go d_obj>>;
+    ],   
+    daemon [; ! set self.number=1 before starting this daemon.
+      if(deadflag>0) rtrue;
+      ++self.number;
+      switch(self.number) {
+      3:
+        if(Cabin in CabinHall) {
+          move_cabin(CabinHall2);
+        } else {
+          move_cabin(CabinHall);
+          StopDaemon(Cabin);
+        }
+        
+        if(player in CabinLadder || player in Cabin || player in CabinRoof) {
+          print "^You can't avoid observing \
+            that the ravine floor is about 50 metres below, and you feel \
+            a slight dizziness. A few minutes later, the journey comes to \
+            an end as the cable car enters another terminal, similar to the \
+            one you just left.^";
+          PlayerTo(parent(player)); ! to update references & look around.
+        }
+
+       19:
+        if(self in CabinHall2 && superparent(player)==CabinHall2) 
+          print "^A humming sound is heard and the cable car starts vibrating.^";
+       20:
+        ! move the cabin down again to block an exit which is far too easy.
+        StopDaemon(self);
+        if(self in CabinHall2) {
+          move_cabin(CabinHall);
+        
+          if(player in Cabin || player in CabinRoof || player in CabinLadder) {
+            PlayerTo(parent(player),2); ! update references & look around
+          }
+        }
+      }
+    ],
+  has static container open enterable transparent;
+
+Object -> CabinKeyhole "keyhole"
+  with
+      name "key" "hole" "keyhole",
+    parse_name [; return NastyName(self); ],
+    description [;
+      print "Keyholes look like keyholes, I guess. This one does, for sure.";
+      if(CableKey in self)
+        print " There is a key in it.";
+      "";
+    ],
+    before [;
+     Receive:
+      if(player notin Cabin)
+        "It is mounted at the side of the control panel. \
+              You can't reach it from here.";
+      if(noun~=CableKey)
+               "You do your best, but it just won't fit in. Strange.";
+     LetGo:
+      if(CabinPanel has general)
+              print "The glowing button goes dark again.^";
+      give CabinPanel ~general;
+    ],
+  has container static open concealed;
+
+Object -> CabinPanel "control panel"
+  with 
+    name  "floor" "opening" "panel" "button" "buttons" "icon" "icons" "red" "glowing" "floor-opening"
+      "peculiar",
+    parse_name [; return NastyName(self,2); ],
+    number 0,
+    description [;
+      print "There are many buttons on the panel, most with text in what you \
+            suspect is Italian, the rest with small icons which must have made \
+            sense to someone at some point. You think one of the icons depict \
+            the floor opening and someone falling out, but you are certainly not \
+            sure about your interpretation. ";
+      if(self has general) print "The button under that icon is glowing red. ";
+      print "There is also a keyhole ";
+      if(CableKey in CabinKeyhole) print "with a key in it ";
+      "at the side of the control panel.";
+    ],
+    before [;
+     Switchon:
+       if(self has general) "The cable car has already been turned on.";
+       if(Cablekey notin CabinKeyHole) "There is no obvious way to turn the cable car on.";
+       <<Turn CableKey>>;
+     Switchoff:
+       if(self hasnt general) "The cable car is already turned off.";
+       if(Cablekey notin CabinKeyHole) "There is no obvious way to turn the cable car off.";
+       <<Turn CableKey>>;
+     Unlock: 
+       <Insert second CabinKeyhole>;
+       if(second==CableKey) {
+         new_line;
+         <Turn second>;
+       }
+       rtrue;
+     Examine:
+       if(player notin Cabin) {
+         print "It has a lot of buttons. ";
+         if(self has general) "One of the buttons is glowing red.";
+         "They are all dark.";
+       }
+     Push:
+      if(player notin Cabin)
+        "The panel is inside the cable car. You can't reach it from here.";
+      if(self has general) {
+        if(Cabin.number==2 or 19) {
+          if(Cabin in CabinHall) {
+            Stopdaemon(Cabin);
+            Cabin.number=0;
+          }
+          else
+            Cabin.number=3;
+          print "The same red light as before flashes three times, then \
+            the vibrations stop and all is quiet again, except for the \
+            blizzard outside.";
+          if(self.number++<1)
+            print " You have now managed to both start and stop \
+              the cable car using only one button. The design of the control \
+              panel is even more of a mystery now.";
+          "";
+        }
+        else {
+                Cabin.number=1;
+          StartDaemon(Cabin);
+                "A red lamp at the top of the panel flashes once and the cable car \
+          starts vibrating.";
+        }
+      }
+      "These buttons have a nice feel to them. Just as distinct as you \
+      like them. Also, they make that nice little click sound when they hit \
+      the bottom. Nothing else happens.";
+    ],
+  has static concealed;
+
+Object -> CabinRoof "cable car roof"
+  with
+    name "cabin" "cable" "car" "roof" "ceiling",
+    parse_name [; return NastyName(self,3); ],
+    description [x y;
+      if(player in self) print "You are standing on the roof of the cable car. \
+         You can feel the cable car moving slowly in the wind. ";
+      print "There is a hatch mounted in the cable car roof, leading down into the cable car";
+      if(player in self or LowerWire or UpperWire) {
+        y=0; objectloop(x in self) if(x~=player) { y++; give x workflag; }
+        give player ~workflag;
+        if(y>0) {
+          print ". On the roof";
+          WriteListFrom(child(self),
+                        ENGLISH_BIT+RECURSE_BIT+WORKFLAG_BIT+ISARE_BIT);
+        }
+      } else if(player in location && Bow in self) {
+        print ". You can see ", (the) Bow, " lying on the roof";
+      }
+      ".";
+    ],
+    before [;
+    GetOff:
+      if(CabinHatch hasnt open)
+        "The hatch is closed.";
+      if(Bow in player)
+        "You can't go through the hatch while carrying the bow. The bow is \
+        too big and the hatch is too narrow.";
+
+      move player to Cabin;
+      "Using the ladder you enter the cable car again.";
+    ],
+    after [;
+    Receive:
+      if(noun==Bow) {
+        "After a few failed attempts you manage to put the unwieldy \
+        bow on the cable car roof.";
+      }
+    LetGo:
+      if(noun==Bow && player in location)
+        "Reaching up as far as you can, you tug at the bow and it \
+        comes crashing down from the cable car roof. You pick it up.";
+    ],
+  has static supporter enterable concealed;
+
+Object -> CabinLadder "cable car ladder"
+  with
+    name "cabin" "cable" "car" "ladder" "maintenance",
+    parse_name [; return NastyName(self,3); ],
+    description [;
+      print "It is a ladder set into the far wall of the cable car, \
+        leading up to ";
+      if(CabinHatch has open)
+        "an open hatch in the ceiling.";
+      "a closed hatch in the ceiling.";
+    ],
+    before [;
+     Enter:
+      if(player in CabinRoof) <<GetOff CabinRoof>>;
+      <<Climb self>>;
+     Climb:
+      if(player notin Cabin && player notin CabinRoof && player notin self)
+        "The ladder is mounted in the cable car, quite far from where you are now.";
+
+      if(player in self) {
+        if(CabinHatch hasnt open)
+          "You find your way up blocked by a closed hatch above you.";
+
+        if(Bow in player)
+          "You can't go through the hatch while carrying the bow. The bow is \
+          too big and the hatch is too narrow.";
+
+        move player to CabinRoof;
+        "Climbing the ladder you pass through the hatch and \
+        find yourself on the cable car roof.";
+      } else {
+        move player to self;
+        "You climb onto the ladder.";
+      }
+     GetOff:
+      if(player in self) {
+        move player to Cabin;
+        "You climb down from the ladder.";
+      }
+     Examine: rfalse; ! always accept examine
+     default:
+      if(player notin self && player notin Cabin)
+        "The ladder is mounted inside the cable car. \
+        You can't reach it from here.";
+    ],
+    after [;
+     Receive:
+      move noun to Cabin;
+      print_ret (The) noun, " falls down ", (the) self, ".";
+    ],
+  has static supporter enterable concealed;
+
+Object -> CabinHatch "cable car hatch"
+  with 
+    name "cabin" "cable" "car" "hatch",
+    parse_name [; return NastyName(self,3); ],
+    description [;
+      if(player in CabinRoof)
+        print "It's the small hatch in the roof which you came through when \
+          you first got here. You could probably go through it again \
+          if you like.";
+      else
+        print "It's a small hatch in the ceiling of the cable car, probably \
+          there for maintenance purposes. It is placed right above the ladder.";
+      if (self has open)
+        " It is open.";
+      " At the moment, it is closed though.";
+    ],
+    before [;
+     Enter:
+      if(player in CabinRoof) <<GetOff CabinRoof>>;
+      <<Climb CabinLadder>>;
+     Examine:
+      rfalse;
+     default:
+      if(player notin CabinLadder && player notin CabinRoof)
+        "The hatch is mounted in the cable car roof. You can't reach it from \
+        here.";
+      rfalse;
+    ],
+  has static openable concealed;
+
+[ CabinReachable obj write_comment throwat  x lo lp;
+ ! This routine checks if <obj> can be reached/touched from your
+ ! current position when you are dealing with the cabin.
+ ! Eg. You can't touch things on the floor when your are on the wire.
+
+ ! obj: is the object to check
+ ! write_comment: if true, write "The X is hard to reach from here." if failed.
+ ! throwable: Check if possible to throw thing at obj, instead of reach/touch.
+
+ if(metaclass(obj)~=Object) rtrue; ! Not an object, probably a number.
+
+ ! Where is the object? (unknown, room, in cabin, on cabin, on wire, player)
+ for(x=obj, lo=0 : lo==0 : x=parent(x))
+   switch(x) {
+    0: lo=-1;
+    Compass: lo=-1;
+    CabinHall, CabinHall2: lo=1;
+    Cabin, CabinLadder, CabinPanel, CabinKeyhole: lo=2;
+    CabinRoof: lo=3;
+    UpperWire, LowerWire, Girders: lo=4;
+    PlayerObject: lo=5;
+   }
+!  if(lo<0) rtrue; ! Things that are not actually here are always in scope
+  
+  ! Where is the player? (unknown, room, in cabin, on cabin, on wire)
+  for(x=player, lp=0: lp==0: x=parent(x))
+    switch(x) {
+     0: lp=-1;
+     CabinHall, CabinHall2: lp=1;
+     Cabin, CabinLadder, CabinPanel, CabinKeyhole: lp=2;
+     CabinRoof: lp=3;
+     UpperWire, LowerWire: lp=4;
+    }
+!  if(lp<0) rtrue; ! Player is not even here...
+
+  if(throwat) {
+    x=true;
+    switch(lp) {
+    1: if(lo==1 or 2) if(obj~=Cabin) x=false;
+    2: if(lo==1 or 3 or 4) x=false;
+    3: if(lo==2) x=false;
+    4: if(lo==2) x=false;
+    }
+
+    if(write_comment && x==false) print (The) obj, " is hard to hit from here.^";
+  } else {
+    ! CabinHatch is reachable from cabin and cabin roof (generally speaking)
+    if(obj==CabinHatch && (lp==2 || lp==3)) rtrue;
+    ! Cabin and CabinLadder are reachable from CabinRoof
+    if((obj==Cabin || obj==CabinLadder) && lp==3) rtrue;
+
+    x=true;
+    switch(lp) {
+    1: if(lo==3 or 4) x=false;
+    2: if(lo==1 or 3 or 4) x=false;
+    3: if(lo==1 or 2) x=false;
+    4: if(lo==1 or 2) x=false;
+    }
+
+    if(write_comment && x==false) {
+      print (The) obj;
+      if(obj has pluralname) print " are";
+      else print " is";
+      print " hard to reach from here.^";
+    }
+  }
+
+  return x;
+];
+
+AutoDoor WorkshopDoor "door"
+  with 
+    found_in CabinHall Workshop,
+    before [;
+    Examine: print "It's a sturdy door with the kind of lock that can only be locked with \
+      a key from either side.^";
+      if(self hasnt open && ServiceMan in Workshop) {
+        print "^";
+        <<Listen self>>;
+      }
+    Listen:
+      if(self hasnt open && ServiceMan in Workshop) {
+      	CabinHall.lastsound=-1;
+      	"You hear the faint sound of someone whistling in there, although \
+        the door absorbs much of it. Also, there are strange noises, \
+        as if someone's building or repairing a machine.";
+      }
+    KnockOn:
+      if(self hasnt open && ServiceMan in Workshop) {
+        StartDaemon(ServiceMan);
+        print "Someone shouts ~Coming!~ from inside.^";
+        rtrue;
+      }
+    ],
+    with_key NULL,
+  has locked lockable;
+
+Room Workshop "Workshop"
+  with description
+      "There are quite a lot of tools, pieces of wood, and other junk \
+      scattered about the floor. A door leads north.",
+    n_to WorkshopDoor,
+    out_to WorkshopDoor,
+  has light;
+
+Object -> Junk "junk"
+  with
+    name "junk" "tools" "tool" "piece" "pieces" "of" "wood" "other" "things"
+      "thing" "part" "lawnmower",
+    article "some",
+    description "Oh, there's all sorts of things you don't need in there. \
+      You can't help but to wonder why no one throws it away.",
+    before [;
+     Examine:;
+     Search:
+      "You find a thing that must have been a part of a lawnmower once. \
+      After close consideration, you put it back again.";
+     default:
+      "Trust me on this one, it's all rubbish.";
+    ],
+  has scenery static concealed;
+
+Room Garage "Garage"
+  with description
+      "You are in a sparsely furnished garage, with a wide doorway leading \
+      out set in the eastern wall.",
+    singledest 'garage',
+    e_to ParkingArea,
+    out_to ParkingArea,
+  has light;
+
+Object -> Truck "truck"
+  with 
+    name "truck" "volkswagen" "wreck" "frame",
+    initial "In the middle of the garage you can see a wrecked truck.",
+    description [;
+      print "This Volkswagen truck will need serious repair before it can get \
+              back on the road again. Its left side is smashed, the radiator \
+              has been leaking water and the whole frame is warped. On the \
+              front bumper you discover hair and stains of blood";
+      if(bolt hasnt general) 
+        print ". On the rear part of the platform is a large bow. It \
+              has probably served as support for a tarpaulin, although none \
+              is to be seen now";
+      ".";
+    ],
+    before [  i j;
+    Search:
+      if(bolt hasnt general) 
+        print "On the rear part of the platform is a large bow. It \
+              has probably served as support for a tarpaulin, although none \
+              is to be seen now. ";
+      objectloop(i in self && (i hasnt scenery && i hasnt concealed)) {
+        j=i;
+      }
+      if(j>0) {
+        print "On the truck you find ";
+        WriteListFrom(child(self),ENGLISH_BIT + CONCEAL_BIT);
+        ".";
+      } else if(bolt hasnt general)
+        "";
+      else
+        "There's nothing on it.";
+      ! " You find nothing else of interest.";
+    Enter: "There is no point in entering the wrecked truck.";
+    ],
+  has static supporter;
+
+Object -> -> Radiator "radiator"
+  with name "broken" "radiator",
+    description
+      "The radiator is broken, and tracks on its dirty surface shows \
+       how water has been leaking out of it. All water is now gone, and the accident \
+       which destroyed the truck must have taken place quite some time ago.",
+    before [;
+     Take, Remove: "The radiator is securely fastened to the rest of the truck.";
+    ],
+  has scenery;
+
+Object -> -> Gore "gore"
+  with name "gore" "stains" "stain" "of" "blood" "and" "hair" "on" "front"
+      "bumper",
+    article "some",
+    description "The hair is thick with dried blood and about three \
+      centimetres long. It could be hair from some animal, but it's really \
+      hard to tell.",
+    before [;
+     Examine, Search:;
+     Take, Remove:
+      "You've been down that road before. You still remember your mother's \
+      anger and disgust when you showed her the dead cat you had found. Some \
+      things just never seem to leave you. However, you can still leave this.";
+     default:
+      "It's just some dried blood and hair. You don't feel much like digging \
+      into it.";
+    ],
+  has scenery;
+      
+Object -> -> Bow "bow"
+  with 
+    name "bow" "metal" "pipes" "u-shaped" "u" "shaped",
+    description [;
+      print"It is made of three metal pipes, each about two meters \
+        long, which are welded together forming a U-shaped bow";
+      if(bolt hasnt general)
+        print ". It is fixed to the truck with a bolt";
+      ".";
+    ],
+    before [;
+     Take:
+      if (bolt hasnt general)
+        "The bow is fixed with a bolt and cannot be removed.";
+      give self ~concealed;
+     TakeIn:
+      if(Bolt in Truck)
+        <<TakeIn Bolt second>>;
+    ],
+  has concealed weird huge;
+
+Object -> -> Bolt "bolt"
+  with 
+    name "bolt",
+    description "It's a rather large bolt with a six-sided head, tightly \
+      holding the bow in place.",
+    before [;
+     TakeIn, TurnWith:
+      if(second==Wrench  && Wrench in player)
+        <<Take Bolt>>;
+     Take, Turn, Pull, Push:
+      if(Wrench in player && bolt hasnt general) {
+        give bolt general;
+        remove bolt;
+        move bow to Garage;
+        give bow ~concealed;
+        "You quickly remove the bolt using the wrench and the \
+        bolt falls to the ground. It then rolls through a drain grate. \
+        The bow falls to the floor with a rattle.";
+      }
+      if(bolt hasnt general)
+        "You can't get a grip on the head of the bolt with your
+        bare hands.";
+    ],
+  has concealed;
+
+Room Trail "Trail"
+  with
+  	last_dir 0,
+    description [;
+      print "You are on a steep track about half way ";
+      if(self.last_dir==u_obj or s_obj)
+        print "up from";
+      else
+        print "down to";
+      print " the ravine floor. You can either continue ";
+      if(self.last_dir==u_obj or s_obj)
+        "upwards or go back down into the ravine.";
+      "down into the ravine or climb back up again.";
+    ],
+  after [;
+    Go: self.last_dir=noun;
+    ],
+    u_to ParkingArea, s_to ParkingArea, d_to RavineFloor,
+  has light;
+
+Room RavineFloor "Ravine Floor"
+  with
+    description [;
+      print "The ravine floor is strewn with boulders and other \
+      objects blocking the way to the east and west. The steep
+      mountainside to the north looks unclimbable but to the south \
+      a small track winds up through the rubble. ";
+    if(IronDoor has open)
+      "The huge iron door has swung open and left a dark hole leading \
+        into the mountainside.";
+    "Almost covered by the snow, you spot a huge iron \
+      door in the mountainside to the north.";
+    ],
+    singledest 'ravine',
+    doubledest 'ravine' 'floor',
+    s_to Trail, u_to Trail, n_to IronDoor,
+  has light;
+
+Object -> MountainSide "mountainside"
+  with
+    name "mountain" "mountainside" "wall" "side" "rugged" "surface",
+    description
+      "The mountainside stretches almost vertically up from here. Its rugged surface is partly covered by snow and ice.",
+    before [;
+    Climb: "You're not Spiderman.";
+    ],
+  has scenery;
+
+Room CabinHall2 "Upper Cable Car Terminal"
+  with
+    description [;
+     print "The steel wire is held in a firm grip by three enormous \
+      girders sitting between the eastern and the western walls. It \
+      descends into the valley to the south. A doorway enters the main \
+      building to the north.";
+      if(Cabin in self) " The cable car is hanging from the wire.";
+      "";
+    ],
+    singledest 'terminal',
+!    doubledest 'cable' 'hall',
+    before [;
+    #IFNDEF DEBUG;
+        if(self hasnt general) {
+          give self general;
+          StartDaemon(Henkel);
+        }
+    #ENDIF;
+    ],
+    after [;
+     Go:
+      if(noun==s_to) {
+              give EntranceDoor ~open;
+              print "^The door closes behind you.^";
+      }
+    ],
+    n_to EntranceDoor,
+    s_to  "In the last moment, you discover that the ravine \
+           is in that direction, and that the fall would be \
+           more than enough to cause your death.",
+  has light;
+
+Object -> Girders "girders"
+  with name "girder" "girders" "huge" "enormous",
+    description "They are about a metre and a half in diameter. The rounded \
+      shape of the top of the girders make them pretty much impossible to \
+      climb onto.",
+    article "some",
+    before [; Enter, Climb: "The shape of the girders gives you nothing to hold on \
+      to while climbing.";
+      Take, Remove: "Sure you can.";
+    default: if(CabinReachable(self, true)==false) rtrue;
+    ],
+  has static scenery pluralname;
+
+Object -> UpperWire "wire"
+  with 
+    name "wire" "rope" "steel" "2-inch",
+    description
+      "This is the 2-inch steel wire from which the cable car \
+      hangs.",
+    before [;
+    Go:
+      if(player notin self)
+        "You must be standing on the wire first.";
+
+      if(Bow in player) {
+        "Climbing up the wire was possible, but climbing down an icy \
+        wire in this weather? No, it can't be done.";
+      } else {
+        "Climbing down an icy wire in this weather? No, it can't be done.";
+      }
+    Enter:
+      if(noun==self && player in self) <<Go s_obj>>;
+      if(player notin CabinRoof)
+        "The wire is mounted more than three metres above you.";
+      move player to self;
+      "You climb onto the wire.";
+    Climb:
+      <<Enter self>>;
+    GetOff:
+      if(parent(self)==parent(CabinRoof)) {
+        move player to CabinRoof;
+        "You jump down onto the cable car roof again.";
+      }
+      move player to parent(self);
+      "You jump down from the wire. A brave move, since the wire is \
+      mounted almost three metres above the floor. Luckily, it all \
+      went well this time.";
+    Examine: rfalse; ! always accept examine
+    default: if(CabinReachable(self, true)==false) rtrue;
+    ],
+    after [;
+      Receive:
+       move noun to parent(self);
+      print_ret (The) noun, " falls down to the floor below.";
+    ],
+  has static enterable supporter concealed;
+
+
+SceneryContainer -> ToolChest "toolchest"
+  with 
+    name "toolchest" "chest" "toolbox" "tool" "green" "faded" "box",
+    describe [;
+     "^A toolchest stands in one corner of the room.";
+    ],
+    description [;
+      print "It's a box of the kind normally used for holding \
+            tools. It's green but the colour has faded a little. ";
+      self.write_contents(true);
+      "";
+    ],
+    before [;
+     Take, Remove:
+      print_ret "Taking ", (the) self, " wouldn't pass unnoticed. \
+        You'd better leave it.";
+    ],
+  has openable ~static;
+
+Object -> -> Nippers "pair of wire cutters"
+  with
+    name "wire" "cutters" "pair" "of" "nippers" "small" "pliers" "comfortable" "blue" "plastic"
+      "material",
+    parse_name [; return NastyName(self); ],
+    description "It's a small tool, mainly intended for cutting electric \
+      wires and the like. The handle is covered with a comfortable blue \
+      plastic material.",
+  has weird;
+
+ChainRope -> ->    ChainA "chain";
+ChainRope -> -> -> ChainB "chain";
+

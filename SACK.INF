@@ -1,0 +1,26 @@
+! Sack object definitions, must be included after Parser
+
+Object Zipper "sports bag" 
+  with
+    description "The nylon sports bag is yellow and surprisingly big. \
+                There is a wide strap for carrying it over your shoulder.",
+    name "nylon" "yellow" "surprisingly" "big" "sports" "sport" "bag",
+    before [;
+     Receive:
+      if(noun ofclass Bottle && noun has open && children(noun)~=0)
+        "The contents of ", (the) noun, " would soak ", (the) self, ".";
+      if(noun ofclass Burnable && noun.burning)
+        "You really don't want to put ", (the) noun, " into ", (the) self,
+        " while it's burning.";
+      if(self hasnt open) {
+        print "(opening ", (the) self, " first)^";
+        give self open;
+        EndTurnSequence();
+        if(deadflag>0 || self hasnt open) rtrue;
+      }
+    ],
+  has container open openable;
+Constant MAX_CARRIED 5;
+Constant SACK_OBJECT Zipper;
+
+

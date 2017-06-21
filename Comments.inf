@@ -1,0 +1,911 @@
+Array PowersOfTwo       
+  --> $$0000000000000001
+      $$0000000000000010
+      $$0000000000000100
+      $$0000000000001000
+      $$0000000000010000
+      $$0000000000100000
+      $$0000000001000000
+      $$0000000010000000
+      $$0000000100000000
+      $$0000001000000000
+      $$0000010000000000
+      $$0000100000000000
+      $$0001000000000000
+      $$0010000000000000
+      $$0100000000000000
+      $$1000000000000000;
+
+[ PronounNom i;
+     if (i hasnt animate) print "it";
+     else { if (i has female) print "she"; else print "he"; } ];
+![ CPronounNom i;
+!     if (i hasnt animate) print "It";
+!     else { if (i has female) print "She"; else print "He"; } ];
+![ PronounAcc i;
+!     if (i hasnt animate) print "it";
+!     else { if (i has female) print "her"; else print "him"; } ];
+[ PronounGen i;
+     if (i hasnt animate) print "its";
+     else { if (i has female) print "her"; else print "his"; } ];
+
+
+Object Comments "Comments Object"
+  with
+    daemon [;
+      ! This daemon is only here to start the people's daemons.
+      #IFNDEF DEBUG;
+      ! Start one NPC each turn. (DEBUG uses InitPeople instead)
+      if(Williams.daemon_running==false) Williams.startup();
+      else if(Schwartz.daemon_running==false) Schwartz.startup();
+      else if(Petra.daemon_running==false) Petra.startup();
+      else if(John.daemon_running==false) John.startup();
+      else StopDaemon(self);
+      #ENDIF;
+      #IFDEF DEBUG;
+      StopDaemon(self);   
+      #ENDIF;
+    ],
+    lastrand 0,
+    lastroom 0,
+    ! subrands must be at least the same length as randlist.
+    randlist rand_Petra rand_John rand_Williams rand_Schwartz
+      rand_Henkel rand_ServiceMan rand_anyone rand_Parrot rand_Dog,
+    subrands 0 0 0 0 0 0 0 0 0, ! To store lengths of arrays in randlist
+    randrequires Petra John Williams Schwartz Henkel ServiceMan 0 Parrot Dog,
+    ! Each entry in forcelist corresponds to an entry in forcerequires
+    forcelist force_none_first force_Petra force_John force_Williams
+      force_Schwartz force_Henkel force_ServiceMan force_Parrot
+      force_Dog force_none_last,
+    forcerequires 0 Petra John Williams Schwartz Henkel ServiceMan Parrot Dog 0,
+!    totalforces 0,
+    forcelist_length 0,
+    humans_present 0,
+    humans_available 0,
+    comments_printed 0,
+    animates Petra John Williams Schwartz Henkel ServiceMan Parrot Dog,
+! ************ Experimental exclusion of ServiceMan, so he doesn't start babbling
+    humans Petra John Williams Schwartz Henkel, !  ServiceMan, 
+    calculate_lengths [ len x t k;
+      self.forcelist_length=self.#forcelist/2;
+      t=0;
+      len=(self.#randlist)/2;
+      for(x=0:x<len:x++) {
+        k=(self.#((self.&randlist)-->x))/2 - 2;
+        if(k<1) k=0;
+        (self.&subrands)-->x=k;
+        t=t+k;
+      }
+      return t;
+    ],
+    make_comments [ i h len pres avail;
+      if(self.forcelist_length<1) self.calculate_lengths();
+      if(John.drunk>0) Comments.make_busy(John); ! *** Special case necessary!
+      len=(self.#animates)/2;
+      for(i=0:i<len:i++)
+        self.check_presence(self.&animates-->i);
+!      self.check_presence(Petra);
+!      self.check_presence(John);
+!      self.check_presence(Williams);
+!      self.check_presence(Schwartz);
+!      self.check_presence(Henkel);
+!      self.check_presence(ServiceMan);
+!      self.check_presence(Parrot);
+!      self.check_presence(Dog);
+      len=(self.#humans)/2;
+      for(i=0,h=self.&humans-->0:i<len:h=self.&humans-->++i) {
+!        print "Z",(The) h,"Z"; 
+        if(h.present) pres++;
+        if(h.available) avail++;
+      }
+      self.humans_present=pres;
+      self.humans_available=avail;
+!      self.humans_present=Petra.present+John.present+Williams.present+
+!        Schwartz.present+Henkel.present+ServiceMan.present;
+!      print "xxx",self.humans_present,"xxx";
+!      self.humans_available=Petra.available+John.available+Williams.available+
+!        Schwartz.available+Henkel.available+ServiceMan.available;
+
+      self.comments_printed=0;
+      self.make_force_comments();
+      if(self.humans_available>0)
+        self.make_rand_comments();
+    ],
+    check_presence [who;
+      if(superparent(who)==location) {
+        who.present=1;
+!        print "Y",(the) who,"Y";
+        if(who.silent==turns)
+          who.available=0;
+        else
+          who.available=1;
+!        print "X",(the) who,"X";
+      }
+      else {
+        who.present=0;
+        who.available=0;
+      }
+    ],
+    make_busy [who;
+      if(who.available>0) self.humans_available--;
+      who.available=0;
+      who.silent=turns; ! Needed to make sb busy during the turn before Comments object is called
+      return who;
+    ],
+    default_human [  i x;
+      if(self.humans_available<1) return 0; ! Signal that there is no default human.
+      x=random(self.humans_available);
+      for(i=0:i<(self.#humans)/2 && x>0:i++)
+        if((self.&humans-->i).available)
+          x--;
+      return self.&humans-->(i-1);
+    ],
+
+! force_comments always get the chance of being printed as long as the
+! required person is present.
+
+    make_force_comments [  len x req; ! y; 
+      len=self.forcelist_length;
+      for(x=0:x<len:x++) {
+        req=self.&forcerequires-->x;
+        if(req==0 || req.present~=0) {
+          if((self.((self.&forcelist)-->x)).call())
+            self.comments_printed++;
+!            if(req && temp>0 && req.available) self.make_busy(req);
+        }
+      }
+    ],
+    make_rand_comments [   tries i chance k roll mayreq p rout r1 r2 temp oldprint again;
+      
+      oldprint=-1;
+      again=true;
+      while((p=self.humans_available)>0 && self.comments_printed>oldprint && again) {
+        oldprint=self.comments_printed;
+!        print "#" , p;
+!        step++;
+        i=p;
+        chance=40; ! Range = 1 to 100
+        while(--i>0)
+          chance=chance+((chance*8)/10); ! Calculates 1-(0.8^p)
+        chance=chance/(self.comments_printed+1);
+!        print "#" , chance , "^";
+        if(random(100)<=chance) {
+          tries=0;
+          while(tries++<5 && self.humans_available>0) {
+            k=0;
+            i=0;
+            while(++i<=p)
+              k=k+i;
+            roll=random(k);
+            while(roll>0)
+              roll=roll-(--i);
+            ! i should now hold the nr of people to be involved
+            rout=-1;
+            for(k=0:k<self.#randlist / 2:k++) {
+              mayreq=self.&randrequires-->k;
+              ! Check that the list is long enough to cover i persons and that there
+              ! is a routine (nonzero) in that element, and that the required person
+              ! is present.
+              if(self.&subrands-->k>=i && self.&(self.&randlist-->k)-->(i-1)~=0 &&
+                   (mayreq==0 || mayreq.available)) {
+                rout=self.&(self.&randlist-->k)-->(i-1);
+ !               print "&",self.humans_available,"&";
+                if(rout.call()>0) { !  && doreq) 
+                  self.comments_printed++;
+                  tries=100; ! Signals success in printing
+                  break;
+  !                doreq=mayreq;
+                }
+              }
+            }
+            if(rout==-1 && self.humans_available>0)
+              self.make_busy(self.default_human()); ! To avoid not finding a routine again.
+            else {
+    !          if(rout.call()>0) !  && doreq)
+    !            self.comments_printed++;
+              ! And now, change list order slightly by switching any two
+              if(self.#randlist>2) {
+                r1=k+1; ! random(self.#randlist/2);
+                while((r2=random(self.#randlist/2))==r1); ! Make sure r2~=r1
+                r1--;
+                r2--;
+                temp=self.&randlist-->r1;
+                self.&randlist-->r1=self.&randlist-->r2;
+                self.&randlist-->r2=temp;
+                temp=self.&subrands-->r1;
+                self.&subrands-->r1=self.&subrands-->r2;
+                self.&subrands-->r2=temp;
+                temp=self.&randrequires-->r1;
+                self.&randrequires-->r1=self.&randrequires-->r2;
+                self.&randrequires-->r2=temp;
+              }
+            }
+          } ! End while
+        }
+        else
+          again=false;
+      } ! End while
+    ],
+
+    rand_anyone
+      [   x r; ! ################# RANDOM ANYONE SINGLE
+        x=Comments.default_human();
+        Comments.make_busy(x);
+        switch(location) {
+        Kitchen: 
+          r=random(5);
+          switch(r) {
+          1: print_ret "^", (The) x," glances at ",(pronounGen) x," watch.";
+          2: print_ret "^", (The) x," opens the fridge, peeks inside and \
+            exclaims ~Oh no, out of milk again.~";
+          3: print_ret "^", (The) x," accidentally drops one of ",
+            (pronounGen) x," pens but quickly bends down to pick it up again.";
+          default: print_ret "^", (The) x,
+            (string) random(
+              " smiles at you.",
+              " giggles."
+             );
+          }
+        DinnerHall:
+          print "^", (The) x," peeks at the TV over in the living room";
+          if(TV has on) ".";
+          print_ret (string) random(", and sighs."," and looks a little depressed.",
+            ", as if a mere look could turn it on.");
+        }
+        default:
+          r=random(5);
+          switch(r) {
+          1: print_ret "^", (The) x," stops to sniff the air, as if ",(pronounNom) x,
+            " thought ",(pronounNom) x," could smell something odd.";
+          2: print_ret "^An intense beep prompts ", (the) x," to check ",(pronounGen) x," pager.";
+          3: print_ret "^", (The) x," looks a bit tired.";
+          default: print_ret "^", (The) x," glances at ",(pronounGen) x," watch.";
+          }
+      ]
+      [ x y; ! ################# RANDOM ANYONE 2
+        x=Comments.default_human();
+        Comments.make_busy(x);
+        y=Comments.default_human();
+        Comments.make_busy(y);
+        if(random(10)<2)
+          print_ret "^", (The) x, " says it was a pity Stefan Lumbis left so \
+            suddenly. ",(The) y," agrees.";
+        switch(random(2)) {
+        1: print_ret "^", (The) x, " is discussing the recent security measures with ",(the) y,".";
+        2: print_ret "^", (The) x, " tells ",(the) y," about an interesting TV programme ",
+            (pronounNom) x, " saw last night.";
+        }
+      ]
+      [ x y z r; ! ################# RANDOM ANYONE 3
+        x=Comments.default_human();
+        Comments.make_busy(x);
+        y=Comments.default_human();
+        Comments.make_busy(y);
+        z=Comments.default_human();
+        Comments.make_busy(z);
+        r=random(2);
+        switch(r) {
+        1: print_ret "^", (The) x, " is explaining something rather complicated to ",
+            (the) y, " and ", (the) z, ", who both seem very interested.";
+        2: print_ret "^", (The) x, " is explaining something to ",
+            (the) y, " and ", (the) z, ". ",(The) y,
+            " looks as if ",(pronounNom) y,"'d rather be somewhere else.";
+        }
+      ]
+      0 0,
+    rand_Petra
+      [    r f1 f2; ! #################### RANDOM PETRA SINGLE
+        switch(location) {
+        NLab:
+          Comments.make_busy(Petra);
+          r=random(15);  
+          if(r<4){
+            Petra.question_turn=turns;
+            print "^Engrossed in a calculation, Petra asks you to ";
+            switch(r) {
+              1:
+                f1=random(99);
+                f2=random(99);
+                print "multiply ";
+                EnglishNumber(f1); print " and ";
+                EnglishNumber(f2);
+                Petra.answer=f1*f2;
+              2:
+                f1=random(999);
+                f2=random(999);
+                print "add ";
+                EnglishNumber(f1); print " and ";
+                EnglishNumber(f2);
+                Petra.answer=f1+f2;
+              3:
+                f1=random(997);
+                f2=random(999-f1)+f1;
+                print "subtract ";
+                EnglishNumber(f1); print " from ";
+                EnglishNumber(f2);
+                Petra.answer=f2-f1;
+            }
+            ".";
+          }
+            else {
+              print_ret "^", (string)
+                random(
+                       "Petra looks up something in a book.",
+                       "Petra writes down values from a display.",
+                       "Petra waits nervously for a display to change.");
+            }
+        PetrasOffice:
+          Comments.make_busy(Petra);
+          print_ret "^", (string) random(
+            "Petra dusts off the photo of her dog. Not that there was any \
+              dust on it before.",
+            "Petra picks up the photo of her dog and smiles. She puts it \
+              back on the desk.",
+            "Petra dusts off her bookshelf.",
+            "Petra is cleaning her desk.",
+            "Petra opens a drawer and browses through it. She rearranges \
+              its contents slightly, before closing it again.",
+            "Petra picks up the photo from her desk, kisses it, and puts \
+              it back.",
+            "Petra says she's glad you're not too shy to come visit her \
+              in her office.");
+        Library:
+          Comments.make_busy(Petra);
+          print_ret "^", (string) random(
+            "Petra is browsing the bookshelves.",
+            "Petra finds a book she was looking for. She puts a mark on \
+              her list of books to find.",
+            "Petra is reading a book, looking very concentrated.",
+            "Petra is writing something down from a book she found.");
+        CellarStore:
+          Comments.make_busy(Petra);
+          print_ret "^", (string) random(
+            "Petra is browsing through the equipment stored here.",
+            "Petra sneezes from the dust down here.",
+            "Petra glances in your direction, but quickly looks away again.",
+            "Petra browses through the drawers, but doesn't seem to find \
+              anything useful.");
+        default:
+          Comments.make_busy(Petra);
+          print_ret "^", (string) random(
+                                     "Petra is searching her pockets for something.",
+                                     "Petra seems to be thinking hard.");
+        }
+      ]
+      [ x; ! #################### RANDOM PETRA 2
+        Comments.make_busy(Petra);
+        x=Comments.default_human();
+        Comments.make_busy(x);
+        switch(random(4)) {
+        1:
+          switch(random(3)) {
+          1: print "^Petra tells ",(the) x," about the latest gossip.";
+          2: print "^Petra lets ",(the) x," in on the latest gossip.";
+          3: print "^Petra conveys useful information to ",(the) x,
+              ", regarding the private lives of the others working here.";
+          }
+          switch(random(3)) {
+          1: " She can't help but giggle slightly.";
+          2: print_ret " ",(The) x, " blushes briefly.";
+          default: "";
+          }
+        2:
+          print_ret "^", (The) Petra," peeks at ",(the) x,
+            ", but quickly looks away when ", (pronounNom) x," looks up.";
+        3: if(x==Schwartz)
+              "^Petra tells ",(the) x," about ",(the) Williams,"' latest slipups.";
+           else
+              "^Petra tells ",(the) x," about Schwartz' latest slipups.";
+        4: "^Petra complains to ",(the) x," about how tired she is of canned \
+             food, and says she will order delivery pizza as soon as the \
+             blizzard is gone.";
+        }
+      ]
+     0 0,
+    rand_John
+      [; ! #################### RANDOM JOHN SINGLE
+        switch(location) {
+        NLab:
+          Comments.make_busy(John);
+          print_ret "^",  (string) random(
+            "John is doing some research.",
+            "John is looking something up in a book.",
+            "John is reading some gauges.",
+            "John opens his PDA and makes a note.");
+        SWLab:
+          Comments.make_busy(John);
+          print_ret "^", (string) random(
+            "John glances at the screen.",
+            "John presses a button on the machine.");
+        Library:
+          Comments.make_busy(John);
+          print_ret "^", (string) random(
+            "John scratches his head, causing a small cloud of \
+              dandruff to fall on his shoulders",
+            "A telephone ring somewhere nearby startles John.",
+            "John opens his PDA and makes a note.",
+            "John is searching for a book.",
+            "John is lying on his knees to read the book titles on the bottom \
+              shelf.",
+            "John is browsing through a book, looking as if he knows exactly \
+              what he is after.",
+            "John holds a book in each hand, seemingly comparing their \
+              weight.",
+            "John laughs out loud as he reads the text on the back of a book.",
+            "John seems to want to take a book from the top shelf, but as he \
+              notices that you are looking, he picks one at random right in \
+              front of him instead.");
+        JohnsOffice:
+          Comments.make_busy(John);
+          print_ret "^", (string) random(
+            "A telephone ring somewhere nearby startles John.",
+            "John opens his PDA and makes a note.",
+            "John is searching for a book in his bookshelf.",
+            "John calls someone on the phone, but hangs up before anyone gets \
+              a chance to pick up the phone in the other end. He looks \
+              uneasy.",
+            "John opens a drawer and browses through it. Not finding what he \
+              is looking for, he closes the drawer again.",
+            "John pats his little plastic Jesus on the head. ~You're doing \
+              great!~ he says.",
+            "John lifts the keyboard of his computer, and looks disappointed \
+              that there's nothing under it.",
+            "John looks out the window and sighs: ~These blizzards are \
+              really getting to me.~");
+        CellarStore:
+          Comments.make_busy(John);
+          print_ret "^", (string) random(
+            "John is browsing through the equipment stored here.",
+            "John finds three plastic tubes. He juggles them for a minute or \
+              so, before putting them back. Looks like he's an experienced \
+              juggler.",
+            "John starts whistling, but immediately stops when he hears how \
+              the sound fills the room.",
+            "John browses through the drawers, but doesn't seem to find \
+              anything useful.");
+        default:
+          Comments.make_busy(John);
+          print_ret "^", (string) random(
+            "John is searching his pockets for something.",
+            "John looks expectantly at you.",
+            "John looks as if he just came to think of something.",
+            "John opens his PDA and makes a note.",
+            "A telephone ring somewhere nearby startles John.",
+            "John scratches his head, causing a small cloud of \
+              dandruff to fall on his shoulders");
+        }
+      ]
+      [ ; ! #################### RANDOM JOHN 2
+        if(location==NLab && Petra.available && random(10)<3) {
+          Comments.make_busy(John);
+          Comments.make_busy(Petra);
+          "^John tells Petra he wants her to take a look at some \
+            observations he made this morning. Petra gets excited and \
+            starts discussing the implications with John.";
+        }
+
+
+!        x=Comments.default_human();
+!        Comments.make_busy(x);
+!        switch(random(2)) {
+!        1:
+!        }
+      ]
+      0 0,
+
+    Williams_topics 0,
+
+    rand_Williams
+      [  r tries; ! #################### RANDOM WILLIAMS SINGLE
+        if(Williams in WilliamsOffice) {
+!            print "xxz",Comments.Williams_topics; rfalse;
+          if(Comments.Williams_topics < 15 && random(3)<2) {
+            while(tries++<10) {
+              r=random(4)-1;
+              if((Comments.Williams_topics & (PowersOfTwo-->r))==0)
+                tries=100;
+            }
+            if(tries<11) rfalse;
+            Comments.Williams_topics = Comments.Williams_topics | (PowersOfTwo-->r);
+            print "^",(The) Comments.make_busy(Williams);
+            switch(r) {
+            0:
+              " asks you how professor Smith at MIT is doing nowadays, \
+                and asks you to send him his regards.";
+            1:
+              " is planning to go to Boston on vacation, and asks you about \
+                the local sights. You try to evade the subject by talking about \
+                how beautiful Germany is.";
+            2:
+              " says, ~Funny, you don't seem like a typical American to me. \
+                Then again, what do I know?~ He laughs.";
+            3:
+              " asks you to explain your research. You nervously start giving \
+                some crude improvised explanations, but notice to your relief \
+                that he isn't really paying attention to your answer.";
+            }
+          }
+        
+          print_ret "^", (The) Comments.make_busy(Williams),
+            (string) random(
+              " is cleaning his ears with a ballpoint pen.",
+              " is drawing some sketches.",
+              " is reading some papers.",
+              " takes out a paper from a drawer and starts reading it.",
+              " makes some notes on a paper.",
+              " gets up from his desk, paces back and forth in the room \
+                before sitting down again."
+             );
+        }
+      ]
+      [  w; ! #################### RANDOM WILLIAMS 2
+        if(random(3)<2) {
+          "^",(The) Comments.make_busy(Williams), " agrees with ",
+            (The) Comments.make_busy(Comments.default_human()),
+            " that the centre really needs \
+            some new equipment in the kitchen.";
+        }
+        if(John.available) w=John;
+        if(Petra.available) w=Petra;
+        if(w>0) {
+          print "^",(The) Comments.make_busy(Williams), " shows ",
+            (The) Comments.make_busy(w), " a document ",(pronounNom) w,
+            " must sign.";
+          if(random(3)<3)
+            switch(random(2)) {
+              1: print " ", (The) w, " doesn't seem too happy about it.";
+              2: print " ", (The) w, " nods in agreement as ",(pronounNom) w,
+                " reads it, but looks troubled.";
+            }
+          "";
+        }
+      ]
+      0 0,
+    rand_Schwartz
+    [; 
+      Comments.make_busy(Schwartz);
+      switch(random(5)) {
+      1: print_ret "^", (The) Schwartz," quickly draws his gun from its \
+           holster and aims it at a stain on the wall. He says ~Click~, 
+           before putting the weapon back where it belongs. He laughs. You \
+           shiver.";   
+      2: print_ret "^", (The) Schwartz," slaps himself. ~Gotta stay alert!~ \
+           he adds.";   
+      3: print_ret "^", (The) Schwartz," takes out a knife from his boot \
+            and sharpens it before sliding it back into the boot.";   
+      4: print_ret "^", (The) Schwartz," nods at you as if agreeing to \
+            something you just said. ~No, sorry!~ he says, blushing \
+            slightly.";   
+      5: print_ret "^", (The) Schwartz," brushes off some imaginary dirt \
+           from his uniform.";
+      }
+    ]
+    [ x; ! #################### RANDOM SCHWARTZ 2
+      Comments.make_busy(Schwartz);
+      x=Comments.default_human();
+      Comments.make_busy(x);
+      switch(random(3)) {
+      1: print_ret "^", (The) Schwartz," sniffs the air and glances at ",(the) x,
+           ". As far as you can tell, ",(pronounNom) x,
+           " doesn't smell funny, but you can't say for sure.";
+      2: print_ret "^", (The) Schwartz," asks ",(the) x,
+           " if ",(pronounNom) x," has seen the latest issue of ~Waffen und \
+             Munition.~";
+      3: print_ret "^", (The) Schwartz," explains the different ammunition \
+           types available today to ",(the) x,", who seems less than \
+           interested.";
+      }
+    ]
+    0 0,
+    rand_Henkel 
+    [; 
+      Comments.make_busy(Henkel);
+      switch(random(1)) {
+      1:
+        print (string) random(
+          "^Trying to block your view with one hand, Henkel",
+          "^Henkel",
+          "^Looking concentrated, Henkel",
+          "^Henkel swiftly"
+        );
+        print " draws ";
+        print (string) random(
+          "a bicycle",
+          "a pigeon",
+          "an aircraft",
+          "a revolver",
+          "a parachute",
+          "an umbrella",
+          "a saxophone",
+          "a heart",
+          "a circle",
+          "an open window",
+          "a snake",
+          "a tree",
+          "an arrow",
+          "a sword",
+          "a cross",
+          "a motorcycle",
+          "a hammer",
+          "an axe"
+        );
+        print " on a piece of paper";
+        print (string) random(
+          ", which she then crumbles up and throws under her desk.",
+          ". She then proceeds to throw down the paper under her desk.",
+          ", after which she disposes of the paper under her desk."
+        );
+        "";
+      }
+    ]    
+    0 0,
+    rand_ServiceMan 0 0,
+    rand_Parrot 0 0,
+    rand_Dog 0 0,
+    
+
+    force_none_first !################### FORCE_NONE_FIRST ##################
+
+      [ p who j; ! ### Make remarks if other people see the player naked or such
+
+      ! Check if naked or carrying funny stuff
+
+      if(Comments.humans_available>0 && random(4)<3 && Overalls hasnt worn) {
+        if(Jeans hasnt worn) {
+          who=Comments.default_human();
+          Comments.make_busy(who);
+          if(TShirt hasnt worn && Sweater hasnt worn) {
+            print "^", (The) who, (string) random(
+              " looks disapprovingly at your total absense of clothes",
+              " gives you a funny look, seeing that you are naked"
+            ), ".^";
+          } else {
+            print "^", (The) who, (string) random(
+              " looks disapprovingly at your absense of trousers",
+              " pretends not to notice that your private parts are on display"
+            ), ".^";
+          }
+        } else if(TShirt hasnt worn && Sweater hasnt worn) {
+          who=Comments.default_human();
+          Comments.make_busy(who);
+          print "^", (The) who, (string) random(
+            " suggests that you put on your T-shirt",
+            " isn't impressed by your naked torso",
+            " says that you're supposed to be properly dressed"
+          ), ".^";
+        }
+      }
+        
+      if(Comments.humans_available>0) {
+        objectloop(j in player)
+          if((j has weird) || (j has huge))
+            if(p==0 || random(3)<3) p=j;
+        if(p~=0 && random(4)==1) {
+          who=Comments.default_human();
+          print "^", (The) who, " glances at your ", (name) p,
+            " with a puzzled expression.^";
+          Comments.make_busy(who);
+        }
+      }
+    ],
+    
+    force_Petra !################### FORCE_PETRA ############################
+
+!      [; if(John.available) {
+!          Comments.make_busy(John);
+!          print_ret (string) random (
+!            "Petra is telling John about her latest results.",
+!            "John and Petra are discussing research methods.",
+!            "John gives Petra an appreciative smile.",
+!            "Petra draws closer to John.",
+!            "Petra and John are talking about nuclear physics."
+!          );
+!        } ],
+    [   left done ;
+            if(Petra.mission_action==actWaitTurns) 
+        {
+          left=Petra.mission_substep;
+          done=Petra.mission_waitturns-left;
+          ! *** Important: done = 0,1,2, ... n   left = n,n-1, ... 2,-1 ***
+          
+          !       print "^Petra has done ",done," turns, and has ",left," left.";
+          
+          switch(location) 
+          {
+          NLab:
+            if(LabTableLamp hasnt on && John notin NLab && random(3)<2) {
+              Comments.make_busy(Petra);
+              give LabTableLamp on;
+              print "^", (string) random(
+                "Petra looks around and ",
+                "After a quick glance over her shoulder, Petra ",
+                "Petra reaches across the table and ",
+                "Looking a little tired, Petra "
+              );
+              print (string) random(
+                "turns the table lamp on",
+                "switches the lamp on",
+                "pushes the button that turns the table lamp on"
+              );
+              ".";
+            }
+          Kitchen:
+            if(Fridge.number>2 && Fridge has open) {
+              Comments.make_busy(Petra);
+              give Fridge ~open;
+              "^Petra closes the refrigerator, muttering to herself \
+                that it is her food you are spoiling.";
+            }
+            if(done==0) {
+              Comments.make_busy(Petra);
+              "^Petra opens her cupboard and starts browsing through it.";
+            }
+            else if(done==1) {
+              Comments.make_busy(Petra);
+              print_ret "^", (string)
+                random(
+                       "Petra is preparing some food.",
+                       "Petra makes something to eat.",
+                       "Petra pours the contents of a can onto her plate. It \
+                         looks like ravioli is on the menu today.");
+            }
+            else if(done==2) {
+              Comments.make_busy(Petra);
+              "^Petra puts her plate in the microwave oven, and turns
+                it on.";
+            }
+            else if(left>2) {
+              Comments.make_busy(Petra);
+              print_ret "^", (string)
+                random(
+                       "Petra glances at the microwave oven.",
+                       "Petra waits for her food to get warm.",
+                       "Petra looks impatiently at the microwave oven.");
+            }
+            else if(left==2) {
+              Comments.make_busy(Petra);
+              "^Petra opens the microwave oven, and takes her plate out.";
+            }
+            else if(left<1) {
+              Comments.make_busy(Petra);
+              "^Petra takes out a fork and a knife from her cupboard.";
+            }
+          Dinnerhall:
+            if(done==0) {
+              Comments.make_busy(Petra);
+              "^Petra takes a seat at the table and starts to eat.";
+            }
+            else if(left==1) {
+              Comments.make_busy(Petra);
+              "^Petra finishes her meal.";
+            }
+            else if(left<1) {
+              Comments.make_busy(Petra);
+              "^Petra gets up from her chair.";
+            }
+          } 
+        }
+
+    ],
+    force_John   !################### FORCE_JOHN ############################
+      [   done left;
+
+        if(John.drunk==1) {
+          Comments.make_busy(John);
+          "^John is starting to look sober again.";
+        }
+        if(John.drunk>1 && random(2)<2) {
+          Comments.make_busy(John);
+          print_ret "^", (string) random(
+            "John is singing a sad song.",
+            "John is looking sick.",
+            "John is smiling.",
+            "John is trying to say something but fails.");
+        }
+
+!        print "John action: ", John.mission_action, ". ";
+        if(John.mission_action==actWaitTurns) {
+          left=John.mission_substep;
+          done=John.mission_waitturns-left;
+          ! *** Important: done = 0,1,2, ... n   left = n,n-1, ... 2,-1 ***
+            
+!          print "^John has done ",done," turns, and has ",left," left.";
+  
+          switch(location) 
+          {
+          NLab:
+            if(LabTableLamp has on) {
+              Comments.make_busy(John);
+              give LabTableLamp ~on;
+              print "^", (string) random(
+                "John ",
+                "Looking decisive, John ",
+                "John reaches out and ",
+                "With a sigh, John "
+              );
+              print (string) random(
+                "turns the table lamp off",
+                "switches the lamp off",
+                "turns out the table lamp"
+              );
+              ".";
+            }
+          Kitchen:
+            if(Fridge.number>2 && Fridge has open) {
+              Comments.make_busy(John);
+              give Fridge ~open;
+              "^John gives you a suspicious look, before closing the
+                refrigerator.";
+            }
+            if(done==0) {
+              Comments.make_busy(John);
+              "^John opens his cupboard and starts browsing through it.";
+            }
+            else if(done==1) {
+              Comments.make_busy(John);
+              print_ret "^", (string)
+                random(
+                       "John is preparing some food.",
+                       "John makes something to eat.",
+                       "John pours the contents of a can onto his plate. It \
+                         looks like beans.");
+            }
+            else if(done==2) {
+              Comments.make_busy(John);
+              "^John puts his plate in the microwave oven, and turns
+                it on.";
+            }
+            else if(left>2) {
+              Comments.make_busy(John);
+              print_ret "^", (string)
+                random(
+                       "John glances at the microwave oven.",
+                       "John waits for his food to get warm.",
+                       "John looks impatiently at the microwave oven.");
+            }
+            else if(left==2) {
+              Comments.make_busy(John);
+              "^John opens the microwave oven, and takes his plate out.";
+            }
+            else if(left<1) {
+              Comments.make_busy(John);
+              "^John takes out a fork and a knife from his cupboard.";
+            }
+          Dinnerhall:
+            if(done==0) {
+              Comments.make_busy(John);
+              "^John takes a seat at the table and starts to eat.";
+            }
+            else if(left==1) {
+              Comments.make_busy(John);
+              "^John finishes his meal.";
+            }
+            else if(left<1) {
+              Comments.make_busy(John);
+              "^John gets up from his chair.";
+            }
+  !        Kitchen:
+  !          if(John.mission_nr==misSnack) {
+  !            Comments.make_busy(John);
+  !            print_ret "^",  (string) random(
+  !              "John is preparing some food.",
+  !              "John makes something to eat.",
+  !              "John waits for his food to get warm in the microwave.");
+  !          }
+  !        Dinnerhall:
+  !          Comments.make_busy(John);
+  !          print_ret "^",  (string) random(
+  !            "John has taken a seat at the table, and is having a meal.",
+  !            "John seems to be enjoying his meal.",
+  !            "John is eating.");
+          }
+       }
+    ],
+    force_Williams [; rfalse; ],
+    force_Schwartz [; rfalse; ],
+    force_Henkel [; rfalse; ],
+    force_ServiceMan [; rfalse; ],
+    force_Parrot [; rfalse; ],
+    force_Dog [; rfalse; ],
+    force_none_last [; rfalse; ]
+    ;

@@ -1,0 +1,2500 @@
+!################# Research Centre Main Building Start
+
+AutoDoor EntranceDoor "door"
+  with
+    found_in CabinHall2 Entrance;
+
+Room Entrance "Entrance"
+  with
+    description "You are in the reception area of the centre. The \
+      receptionist is sitting in a box, mainly made of glass, placed \
+      at the northern wall. Doorways lead north, further into the \
+      building, and south, entering the cable car terminal.",
+    s_to EntranceDoor, n_to Corridor1,
+  singledest 'entrance',
+  before [;
+  Go:
+    if(noun==n_obj && Bow in player)
+      "Henkel won't allow you to bring the bow into the research centre.";
+  ],
+  after [;
+   Go:
+    if(noun==n_obj) {
+      give EntranceDoor ~open;
+      print "^The door closes behind you.^";
+    }
+  ],
+  has light;
+
+Object -> RoomList "room list"
+  with name "room" "list",
+    description [;
+      print "The list reads:^^";
+      font off;
+!             Leibach, Hans    7^\
+      print "Name             Office^\
+             ---------------------^\
+             Fulham, John     9^\
+             Lumbis, Stefan   8^\
+             Neubaum, Petra   11^\
+             Schwartz, Thomas 12^\
+             Williams, Ronald 10^";
+      font on;
+    ],
+  has static concealed;
+
+
+Object -> ReceptionBox "reception box"
+  with
+    name "reception" "box" "glass" "desk",
+    description [;
+      print "The receptionist is sitting in front of a desk, in the \
+        glass box. There is a PC on the desk.";
+      if(NameTag in self)
+        print " Among the documents on the desk you spot a name tag.";
+      " A list has been attached to the glass on the outside.";
+    ],
+    before [;
+      Open:
+        print_ret "The door to the box is clasped from the inside. ^^Henkel \
+        gives you a funny look.";
+      ],
+  has transparent static concealed;
+
+AutoComputer -> -> Pc1 with computer_name "Krill", user Henkel has on;
+
+Object -> -> NameTag "name tag"
+  with
+    name "name" "tag" "nametag" "name-tag",
+    description "The name ~Hans Leibach~ is written on the name tag.",
+    before [;
+    Take, Remove, Touch:
+      if(self in ReceptionBox)
+        print_ret "You can see it, but the glass prevents you from touching ",
+                 (the) self, ". Annoying, isn't it?";
+    ],
+  has clothing;
+
+Room Corridor1 "Corridor"
+  with
+    description "The green walls make a sober impression, as they stretch \
+      away to the east and west. The reception area can be re-entered to \
+      the south, and a door leads northwest.",
+    s_to Entrance, e_to Corridor2, w_to Corridor12, nw_to C1Door,
+  has light;
+
+AutoDoor C1Door "lab door"
+  with
+    name "lab",
+    found_in Corridor1 SWLab;
+
+Room SWLab "Southwest part of lab"
+  with
+    description "The room is dominated by a large, very complicated \
+      machine. Its front is covered with hundreds of glowing and flashing \
+      lights in all colours. Huge amounts of data are flickering by on \
+      the 40~ screen of the machine. A lot of chemical reactions seem to \
+      be in process in the bowls on the benches around you. Doorways lead \
+      south, east and north.",
+    s_to C1Door, e_to SELab, n_to NLab,
+  has light;
+
+Object -> ComplicatedMachine "complicated machine"
+  with
+    name "machine" "complicated" "lights" "data" "screen",
+    description
+      "It's hard to guess what the machine could be used for.",
+    before [;
+    Examine: rfalse;
+    default:
+      "The machine looks almost dangerous. \
+      You'd better leave it alone.";
+    ],
+  has scenery;
+
+Object -> Experiments "chemical experiments"
+  with
+    name "chemical" "chemicals" "reactions" "bowls" "benches" "bench",
+    article "some",
+    description "All the chemical reactions reminds you of \
+      ~The Mad Scientist's Laboratory~ in bad movies.",                 
+    before [;
+    Examine: rfalse;
+    default: "Handling unknown chemicals can be dangerous. \
+             You'd better leave them alone.";
+    ],
+  has scenery;
+
+Room SELab "Southeast part of lab"
+  with
+    description "You are in a highly insignificant part of the CART \
+      laboratory. A couple of hundreds of books are scattered about on \
+      the different shelves, tables and desks around the room. There is a \
+      door providing an exit to the east, and doorways leading north and \
+      west.",
+    e_to C4WDoor, w_to SWLab, n_to NLab,
+  has light;
+
+Object -> ResearchMaterial "research material"
+  with
+    name "book" "books" "shelves" "tables" "desks"
+         "research" "material",
+    article "some",
+    description
+      "The books are too complicated for you to understand.",
+    before [;
+    Examine: rfalse;
+    default:
+      "Leave the books alone. \
+      You can't understand the contents anyway.";
+    ],
+  has scenery;
+
+Room NLab "Northern part of lab area"
+  with
+    description [;
+      print "Long benches, filled with various research equipment, \
+        line the walls, abrupted only by three doorways, leading north, \
+        into the corridor, southwest and southeast. There is a table in \
+        the middle of the room";
+      if(LabTableLamp has on) ". The warm light of a table lamp brightens up the lab.";
+      ", with a lamp on it.";
+    ],  
+    singledest 'lab',
+    n_to C7Door, sw_to SWLab, se_to SELab,
+  has light;
+
+Object -> ResearchEquipment "research equipment"
+  with
+    name "long" "benches" "bench" "various" "research" "equipment",
+    article "some",
+    description
+      "The research equipment looks brand new. Too bad \
+      that you don't know how to use it.",
+  has scenery;
+
+ScenerySupporter -> LabTable "table"
+  with
+    name "sturdy" "table" "desk",
+    description "It's a sturdy table, probably put here to be used as a desk.",
+    before [; Take, Remove:
+      "It's a tad big for that.";
+    ],
+  has enterable;
+  
+Object -> LabTableLamp "table lamp"
+  with
+    name "table" "lamp",
+    parse_name [; return NastyName(self); ],
+    description "It's a regular table lamp, common in workplaces around the globe.",
+!    initial [;
+!      if(self has on) "The warm light of a table lamp brightens up the lab.";
+!      rfalse;
+!    ],
+!    when_on "The warm light of a table lamp brightens up the lab.",
+!    when_off [;rtrue;],
+    before [; Take, Remove:
+      "Seems like it's been glued to the table. It's not going anywhere the table isn't.";
+    ],
+  has switchable on concealed;
+    
+    
+
+Room Corridor2 "Corridor"
+  with
+    description "You are in a brightly lit part of a corridor, leading \
+      east and west and through a door to the south.",
+    w_to Corridor1, e_to Corridor3, s_to C2Door,
+  has light;
+
+AutoDoor C2Door "office door"
+  with
+    name "office",
+    found_in Corridor2 Office1,
+    description [;
+      if(location==Corridor2 || self has open)
+        "There is a sign on the door which reads \
+        ~12: SECURITY SECTION: T. Schwartz~";
+      "It's an ordinary wooden door.";
+    ];
+
+Room Office1 "Surveillance Room"
+  with
+    description "You have entered a surveillance room with a somewhat \
+      spartan interior. A desk fixed to the wall, and an arm-chair fixed \
+      to the floor are the only noticeable furnishing. Sitting in a rack \
+      set in the southern wall is a video tape recorder and a video monitor.",
+    doubledest 'surveillance' 'room',
+    namedest "Surveillance Room",
+    n_to C2Door,
+  has light;
+
+AutoDesk -> Desk1 "oak desk"
+  with
+    before [;
+      Examine:
+      if(ToDoList has concealed) {
+        give ToDoList ~concealed;
+        "There's a paper lying on the desk. It looks like a to do list.";
+      }
+      Take, Remove, Pull, Push, Turn: "It is fixed to the wall, as in not going anywhere.";
+    ];
+
+AutoComputer -> -> Pc6 with user Schwartz, computer_name "Smaug", has on;
+
+Burnable -> -> ToDoList "to do list"
+  with name "paper" "to" "do" "todo" "to-do" "list" "todolist" "do-list" "to-do-list" "todo-list",
+  description "The list contains the following items:^^
+    V Give code to Dr. Williams^
+    V Give code to John^
+    V Give code to Petra^
+    V Give code to Stefan^
+    V Email instructions on how to change code^
+    - Find best prices on handguns on the web^
+    - Email security regulations regarding beta radiant objects^
+    - Call mom",
+  has concealed;
+
+Object -> Chair1 "arm-chair"
+  with name "chair" "armchair" "arm" "arm-chair",
+  article "an", 
+  before [;
+    Take, Remove, Pull, Push, Turn: "It is fixed to the floor, as in not going anywhere.";
+  ],
+  has scenery enterable supporter;
+
+Object -> Monitor "video monitor"
+  with
+    name "video" "monitor" "screen",
+    parse_name [; return(NastyName(self)); ],
+    description [;
+      if(Video.mode==0)
+        "The monitor is an inferno of black and white dots.";
+
+      else if(Video.mode==1 && Video.where==1)
+        "There is a film on the monitor, showing certain activities \
+        grown-ups do with the curtains shut.";
+      "On the monitor you can see a corridor ending with a door. \
+      Mounted on the wall next to the door is a keypad with a display.";
+    ],
+    describe [; rtrue; ],
+  has static;
+
+Object -> Video "video cassette recorder"
+  with
+    name "cassette" "tape" "recorder" "video" "vcr" "standard",
+    parse_name [ oldwn cass canparse;
+      oldwn=wn;
+      canparse=NastyName(self,2);
+      wn=oldwn;
+      if(canparse) {
+        cass=VideoTape.parse_name();
+        if(cass>=canparse)
+          cass=0;
+        else
+          cass=canparse;
+      }
+      else
+        cass=0;
+      return cass;
+    ],
+    mode 2, ! 0 off, 1 play, 2 record
+    where 1, ! where on the tape
+    description [;
+      print "It's a standard video cassette recorder which is \
+            connected to a surveillance system. On its front \
+            there are five buttons: \
+            RECORD, STOP, REWIND, PLAY and FORWARD.^^\
+            The video recorder is currently ";
+      switch(self.mode) {
+      0: "stopped.";
+      1: "in play-back mode.";
+      2: "in record mode.";
+      }
+    ],
+    before [;
+    Open:
+      "Not a good idea. The video is sealed and any attempt to \
+      eject the cassette will easily be discovered.";          
+    Take, Remove:
+      print_ret
+        "You can't move ", (the) Video, ". It's an integrated \
+        part of the monitor and the alarm system.";
+    ],
+  has transparent static scenery;
+
+Object -> -> VideoTape "video tape"
+  with
+    name "video" "cassette" "tape",
+    parse_name [; return(NastyName(self)); ],
+    description [;
+      print "The label visible through the glass says ~Babes in chains~. ";
+      if(Video.mode)
+        "The tape is running.";
+      else
+        "The tape isn't runing.";
+    ],
+    before [;
+     Examine:;
+     default:
+      "Better not tamper with it. Schwartz wouldn't be too happy.";
+    ],
+  has concealed scenery;
+      
+
+Object -> -> VideoPlay "play button"
+  with
+    name "play" "button",
+    before [; Push:
+      if(Video.mode==1) "It is already in play-back mode.";
+      if(Video.where==2) "You press play but nothing happens.";
+      if(Video.where==0) Achieved(12);
+      Video.mode=1; "Done.";
+    Take, Remove: "You curse the manufacturer for doing such a good job of \
+      attaching the buttons to the VCR.";
+    ],
+    describe [; rtrue; ];
+
+Object -> -> VideoStop "stop button"
+  with
+    name "stop" "button",
+    before [; Push:
+      if(Video.mode==0) "The tape isn't running.";
+      Video.mode=0; "Done.";
+    Take, Remove: "You curse the manufacturer for doing such a good job of \
+      attaching the buttons to the VCR.";
+    ],
+    describe [; rtrue; ];
+
+Object -> -> VideoRecord "record button"
+  with
+    name "record" "button",
+    before [; Push:
+      if(Video.mode==2) "It is already recording.";
+      if(Video.where==2) "You press record but nothing happens.";
+      Video.mode=2; "Done.";
+    Take, Remove: "You curse the manufacturer for doing such a good job of \
+      attaching the buttons to the VCR.";
+    ],
+    describe [; rtrue; ];
+
+Object -> -> VideoRewind "rewind button"
+  with
+    name "rewind" "button",
+    before [; Push:
+      Video.mode=0;
+      print "You press rewind";
+      switch(Video.where--) {
+       0:
+        Video.where++;
+        " but nothing happens.";
+       1:
+        " and wait until it reaches the beginning of the tape.";
+       2:
+        ". The VCR stops when it reaches the point where it was \
+        interrupted while recording.";
+      }
+    Take, Remove: "You curse the manufacturer for doing such a good job of \
+      attaching the buttons to the VCR.";
+    ],
+    describe [; rtrue; ];
+
+Object -> -> VideoForward "fast forward button"
+  with
+    name "fast" "forward" "button",
+    before [; Push:
+      Video.mode=0;
+      print "You press fast forward";
+      switch(Video.where++) {
+       0:
+        ". The VCR stops when it reaches the point where it was \
+        interrupted while recording.";
+       1:
+        " and wait until it reaches the end of the tape.";
+       2:
+        Video.where--;
+        " but nothing happens.";
+      }
+    Take, Remove: "You curse the manufacturer for doing such a good job of \
+      attaching the buttons to the VCR.";
+    ],
+    describe [; rtrue; ];
+
+Room Corridor3 "Corridor"
+  with
+    description "The corridor, coming from the west, makes a 90 degree \
+      bend, and continues to the north. Doors are set in the southern and \
+      eastern walls.",
+    w_to Corridor2, n_to Corridor4, s_to C3SDoor, e_to C3EDoor,
+  has light;
+
+AutoDoor C3SDoor "office door"
+  with
+    name "office",
+    found_in Corridor3 PetrasOffice,
+    description [;
+      if(location==Corridor3 || self has open)
+        "There is a sign on the door which reads \
+        ~11: P. Neubaum~";
+      "It's an ordinary wooden door.";
+    ];
+
+AutoDoor C3EDoor "office door"
+  with
+    name "office",
+    found_in Corridor3 WilliamsOffice,
+    description [;
+      if(location==Corridor3 || self has open)
+        "There is a sign on the door which reads \
+        ~10: R. Williams~";
+      "It's an ordinary wooden door.";
+    ];
+
+Room PetrasOffice "Petra's Office"
+  with
+    description "You are in a small, but comfortable, office. In the \
+      middle of the room, a large oak desk can be seen, and behind it, a \
+      chair. All decorations are strictly work related, except a large \
+      photo of a dog, standing on the desk.",
+    doubledest 'petras' 'office',
+    namedest "Petra's Office",
+    n_to C3SDoor,
+  has light;
+
+AutoDesk -> Desk2 "oak desk";
+
+AutoComputer -> -> Pc2 with computer_name "Dunbar";
+
+Object -> -> DogPhoto "photo"
+  with
+    name "dog" "photo" "photograph" "image" "picture" "of" "a" "doberman",
+    description "It's a picture of a Doberman, and it seems to have been \
+      taken during training. The dog is leaping over a barbed wire fence, \
+      while pursuing a scared-looking man wearing thick coveralls. The \
+      quality of the photo is definitely \
+      professional, even if you quietly question the decision to apply a \
+      soft filter to it. Together with the heart-shaped framing it \
+      almost gets too much.",
+    before [;
+      Examine, Search: ;
+      default:
+        "It's not your dog. Petra probably derives a lot more joy from it \
+          than you ever could.";
+    ],
+  has scenery;
+
+
+
+Object -> Chair2 "chair"
+  with name "chair" has scenery enterable supporter;
+
+Room WilliamsOffice "Dr. Williams' Office"
+  with 
+    description "You are in a small, but comfortable, office. In the \
+      middle of the room, a large oak desk can be seen, and behind it, a \
+      chair.",
+    doubledest 'williams' 'office',
+    namedest "Dr. Williams' Office",
+    w_to C3EDoor,
+  has light;
+
+AutoDesk -> Desk3 "oak desk"
+  with
+    before [;
+     Enter, Open, Unlock:
+      if(TestScope(Williams))
+        "Williams wouldn't appreciate that.";
+    ];
+
+AutoComputer -> -> Pc3 with computer_name "Zaphod", user Williams, has on;
+
+Object -> Chair3 "chair"
+  with name "chair",
+  before [;
+   Enter:
+    if(TestScope(Williams))
+      "By sitting on Dr. Williams' lap, I suppose?";
+   Receive:
+    if(TestScope(Williams))
+      "Perhaps Dr. Williams would mind, as he was there first?";
+  ],
+  has scenery enterable supporter;
+
+Burnable SignedPaper "security regulations document"
+ with
+    name "burning" "security" "regulations" "document" "paper",
+    description [;
+      give self general;
+      "This document covers the centre's security regulations. \
+      Among these you find some information of interest. All \
+      employees have free access to the area except for the \
+      old castle ruin nearby, which hasn't been properly cleared \
+      of live ammunition since the war, and therefore has been \
+      declared off-limit by the local government.^^\
+      The most sensitive work seems to be taking \
+      place in the basement's security lab and no person can \
+      enter it alone, since all the researchers must enter their \
+      personal codes at the same time to open the door.^^\
+      It is also said that security matters are handled by \
+      Mr Schwartz, whom you should contact if you see anything \
+      suspicious.";
+    ];
+
+Bottle WhiskyBottle "brown bottle"
+  with
+    name "bottle" "brown",
+    description [;
+      print "The label says it's a 12 year old single malt whisky. ";
+      self.write_contents(true);
+      "";
+    ],
+    liquidspace 7;
+
+Room Corridor4 "Corridor"
+  with
+    description "Two doors facing each other are set, respectively, \
+      in the eastern and western walls, and the corridor stretches off \
+      to the north and south.",
+    s_to Corridor3, n_to Corridor5, w_to C4WDoor, e_to C4EDoor,
+  has light;
+
+AutoDoor C4EDoor "office door"
+  with
+    article "an",
+    name "office",
+    found_in Corridor4 JohnsOffice,
+    description [;
+      if(location==Corridor4 || self has open)
+        "There is a sign on the door which reads \
+        ~9: J. Fulham~";
+      "It's an ordinary wooden door.";
+    ];
+
+AutoDoor C4WDoor "lab door"
+  with
+    name "lab",
+    found_in Corridor4 SELab;
+
+Room JohnsOffice "John's Office"
+  with
+    description "You are in a small, but comfortable, office. In the \
+      middle of the room, a large oak desk can be seen, and behind it, a \
+      chair. Last year's christmas decorations are still standing on the \
+      window sill. How the office looks doesn't seem to be John's top \
+      priority in life.",
+    doubledest 'johns' 'office',
+    namedest "John's Office",
+    w_to C4EDoor,
+  has light;
+
+Object -> ChristmasDecorations "christmas decorations"
+  with
+    name "christmas" "decorations" "window" "sill" "elvis" "buddha"
+      "shiva" "jesus" "nativity" "scene",
+    description "Seems like a carefully planned mish mash of different \
+      symbols. A sense of humour, or perhaps a serious thought about not \
+      leaving anyone out in the cold, must be the reason for letting \
+      Buddha and Shiva guard the newborn Jesus in the nativity scene. \
+      Elvis seems to be offering Jesus his guitar.",
+    before [;
+      Examine, Search: ;
+      default:
+        "Better just leave it where it is. A plastic Jesus won't open \
+          any doors for you.";
+    ],
+  has scenery;
+
+AutoDesk -> JohnsDesk "desk";
+
+AutoComputer -> -> Pc4 with computer_name "Floyd";
+
+
+Object -> JohnsChair "chair"
+  with name "chair"
+  has scenery enterable supporter;
+
+Room Corridor5 "Corridor"
+  with
+    description "A rather ordinary door is set in the eastern wall. The \
+      corridor extends to the north and south.",
+    s_to Corridor4, n_to Corridor6, e_to LockedOfficeDoor,
+  has light;
+
+Object -> SmokeDetector "smoke detector"
+  with
+    name "smoke" "detector",
+    number 0,
+    initial "There is a smoke detector mounted in the ceiling.",
+    description "The detector is mounted in the ceiling.",
+    before [;
+     Examine: rfalse;
+     ThrownAt:
+      move noun to parent(self);
+      print_ret (The) noun, " hits ", (the) self,
+        " and falls to the floor.";
+     default: "The smoke detector is out of reach.";
+    ],
+    each_turn [x  p;
+      if(self has general) "^You can hear sharp alarm signals.";
+      if(Schwartz notin Office1)
+         "^A flickering green light on the smoke detector informs you \
+         that it is temporarily disabled.";
+      p=parent(self);
+      objectloop(x ofclass Burnable) {
+        if(superparent(x)==p && x.burning) {
+          give self general;
+          print "^As the smoke from ", (the) x, " reaches ",
+                (the) SmokeDetector, " it starts working like \
+                intended. Sharp alarm signals, whose intensity strike \
+                you with amazement, fill the air.^";
+        }
+      }
+    ],
+  has static;
+
+Room LockedOffice "Stefan Lumbis' Office"
+  with
+    description "You are in a small, but comfortable, office. In the \
+      middle of the room, a large oak desk can be seen, and behind it, a \
+      chair.",
+    doubledest 'lumbis' 'office',
+    namedest "Stefan Lumbis' Office",
+    w_to LockedOfficeDoor,
+  has light;
+
+Object -> LockedOfficeChair "chair"
+  with name "chair" has scenery enterable supporter;
+
+AutoDesk -> LockedOfficeDesk "desk"
+  with
+    before [;
+     Examine, Search:
+      move WastePaperBasket to parent(self);
+      "The desk is made of oak or something similar. Panels cover all sides \
+      but the one where you are supposed to sit. There is a waste-paper \
+      basket under it.";
+     LookUnder:
+      move WastePaperBasket to parent(self);
+      "You find a waste-paper basket.";
+    ];
+
+AutoComputer -> -> Pc5 with computer_name "Dimwit";
+
+Object WastePaperbasket "waste-paper basket"
+  with name "waste-paper" "basket" "black" "thin" "metal" "made" "of",
+    description [;
+      print "The basket is black and made of thin metal";
+      if(child(self)) {
+        print ". It contains ";
+        WriteListFrom(child(self), ENGLISH_BIT+RECURSE_BIT);
+      }
+      ".";
+    ],
+    before [;
+     Examine, Search, LetGo, Receive:;
+     Take, Remove:
+      "I'm sure they'll give you one of your own if you need it.";
+     default:
+      "There's not much point in tampering with it, really.";
+    ],
+  has container open;
+
+Burnable -> SecretPaper "tainted paper"
+  with
+    name "burning" "tainted" "paper",
+    description [;
+     Achieved(3);
+     print_ret "The only thing written on it is the number ",
+       ElectronicLock.&codes-->0,".";
+    ];
+
+AutoDoor LockedOfficeDoor "office door"
+  with
+    name "office",
+    description [;
+      if(location==Corridor5 || self has open)
+        print "A sign on the door says ~8: S. Lumbis~ ";
+      if(self has locked) 
+        "There is some space between the door and the doorframe. \
+        On closer examination you spot the latch bolt deep inside \
+        the chink.";
+      "The door is no longer locked. Looks like it will stay that way.";
+    ],
+    before [;
+     Open: Puzzles.PuzzleSeen(LockedOfficePuzzle);
+     Lock:
+      if(self hasnt lockable)
+        "I'm afraid you have wrecked the lock. You can't lock it again.";
+    ],
+    found_in Corridor5 LockedOffice,
+    with_key 0,
+  has lockable locked transparent;
+
+Object -> DoorChink "door chink"
+  with
+    name "door" "chink" "space",
+    parse_name [; return NastyName(self); ],
+    description [;
+      if(LockedOfficeDoor hasnt open) {
+        if(LockedOfficeDoor has locked)
+          "You can spot the latch bolt in the door chink.";
+        "The latch bolt seems to have been permanently retracted.";
+      }
+      "A door chink ceases to exist when the door opens.";
+    ],
+    before [;
+     Search: <<Examine self>>;
+     Receive:
+      <<PullWith LatchBolt noun>>;
+    ],
+  has static concealed transparent;
+
+Object -> -> LatchBolt "latch bolt of the door lock"
+  with 
+    name "latch" "bolt",
+    description [;
+      if(LockedOfficeDoor has locked)
+        "You can only see that it's there in the door chink.";
+      "It seems that you have managed to retract the latch bolt into \
+      the door permanently. The lock isn't working.";
+    ],
+    before [;
+      if(LockedOfficeDoor hasnt locked &&
+         action~=##Examine && action~=##Search) {
+        "The lock has ceased to function. No need to tamper with \
+        it anymore.";
+      }
+     Examine, Search:;
+     PullWith:
+      if(second==Knife) <<Insert Knife DoorChink>>;
+      if(second==SignedPaper or NameTag or Note or SmallNote)
+        "You manage to get ",(the) second," in there, but when pushed \
+          against the bolt it just bends.";
+      "It's too thick to fit into the door chink.";
+     Pull,Push,Remove,Turn:
+      "You can't reach the bolt, only spot it through the door chink.";
+     default:
+      "There isn't that much you can do with the bolt really. It's buried \
+      deep within the door chink.";
+    ],
+  has static concealed;
+      
+    
+    
+Room Corridor6 "Corridor"
+  with
+    description "The corridor leads south and west, while a door lies to \
+      the east.",
+    s_to Corridor5, w_to Corridor7, e_to C6Door,
+  has light;
+
+AutoDoor C6Door "office door"
+  with
+    name "office door",
+    found_in Corridor6 Office5,
+    description [;
+      if(location==Corridor6 || self has open)
+        "There is a sign on the door which reads ~7: H. Leibach~";
+      "It's an ordinary wooden door.";
+    ];
+
+Room Office5 "Office"
+  with
+    description "Obviously, this is an office. A desk and a chair are \
+      standing in the back of the room, and empty bookshelves line the \
+      walls. No one seems to use it at present. It hasn't been deserted \
+      for very long, though, because there is not any noticeable dust \
+      anywhere. The door leads west, out into the corridor.",
+    doubledest 'my' 'office',
+    namedest "Your Office",
+    w_to C6Door,
+  has light;
+
+Object -> Office5Chair "chair"
+  with name "chair" has scenery enterable supporter;
+
+AutoDesk -> Office5Desk "desk";
+
+Object -> Office5Shelves "bookshelf"
+  with name "empty" "bookshelf" "bookshelves",has scenery supporter;
+
+Room Corridor7 "Corridor"
+  with
+    description "The corridor heads off to the east, west and north, \
+      while a door leads south.",
+    e_to Corridor6, w_to Corridor8, s_to C7Door, n_to ExitArea,
+  has light;
+
+AutoDoor C7Door "lab door"
+  with
+    name "lab",
+    found_in Corridor7 NLab;
+
+Room ExitArea "Exit"
+  with
+    description
+      "The corridor, entering from the south, ends at a heavy \
+      door made of steel. Judging from the temperature, being somewhat \
+      lower here than in the rest of the building, you jump to the \
+      conclusion that the door could lead out into the cold \
+      (or into a giant freezer, perhaps...)",
+    singledest 'exit',
+    after [;
+     Go:
+      if(noun==s_obj) {
+        give BackDoor ~open;
+        print "^The door closes behind you.^";
+      }
+    ],
+    s_to Corridor7, n_to BackDoor,
+  has light;
+
+AutoDoor BackDoor "steel door"
+  with
+    name "back" "backdoor" "massive" "steel" "heavy",
+    description [;
+      if((self) has open)
+        "A massive steel door. Putting your hand on it reveals that \
+        it is quite cold. It is currently open.";
+      else
+        "A massive steel door. Putting your hand on it reveals that \
+        it is quite cold. It is currently closed.";
+    ],
+    found_in ExitArea Yard1;
+
+Room Corridor8 "Corridor"
+  with
+    description "This is a piece of corridor running in east-west direction. \
+      A cold draught of air coming from the east makes it a bit chilly. A \
+      metal door is set in the south wall.",
+    e_to Corridor7, w_to Corridor9, s_to HighStairsDoor,
+    before [;
+    Jump: "You still can't reach the smoke detector.";
+    ],
+    after [;
+     Go:
+      if(noun==n_obj) {
+        give HighStairsDoor ~open;
+        print "^The door closes behind you.^";
+      }
+    ],
+
+  has light;
+
+Room Stairs "Flight of steps"
+  with
+    description "You are on a flight of concrete steps, leading down to a \
+      green metal door to the south and up to a similar door to the north.",
+    after [;
+     Go:
+        give HighStairsDoor ~open;
+        give LowStairsDoor ~open;
+        print "^The door closes behind you.^";
+    ],
+!    doubledest 'flight' 'steps',
+!    singledest 'stairs',
+!    namedest "The Stairs to the Cellar",
+    s_to LowStairsDoor, d_to LowStairsDoor,
+    n_to HighStairsDoor, u_to HighStairsDoor;
+    
+AutoDoor HighStairsDoor "metal door"
+  with
+    parse_name [ i m;
+      while(((m=NextWordStopped())~=-1) &&
+            ((m=='sturdy' or 'metal' or 'door' or 'cheerful' or 'green') ||
+             ((location==Corridor8) && (m=='south' or 'southern' or 's')) ||
+             ((location==Stairs) && (m=='north' or 'northern' or 'n' or
+                                     'high' or 'higher' or
+                                     'up' or 'upper' or 'u'))))
+        i++;
+      return i;
+    ],
+    description "It is a sturdy metal door, painted in a cheerful green \
+      colour.",
+    found_in Corridor8 Stairs;
+
+AutoDoor LowStairsDoor "metal door"
+  with
+    parse_name [ i m last;
+      while(((m=NextWordStopped())~=-1) &&
+            ((m=='sturdy' or 'metal' or 'door' or 'cheerful' or 'green') ||
+             ((location==CCorridorII) && (m=='north' or 'northern' or 'n' or
+                                          'emergency' or 'exit')) ||
+             ((location==Stairs) && (m=='south' or 'southern' or 's' or
+                                     'low' or 'lower' or 'down' or 'd')))) {
+        last=m;
+        i++;
+      }
+      if(last=='door' && i==1)
+        return 0;
+      return i;
+    ],
+    description [;
+      print "It is a sturdy metal door, painted in a cheerful green \
+        colour.";
+      if(location==CCorridorII)
+        " A small sign on the door says ~Emergency exit~.";
+      "";
+    ],
+    found_in CCorridorII Stairs;
+
+Room Corridor9 "Corridor"
+  with
+    description "At this point, the corridor bends to the east and \
+      south. A doorway leads west into a library.",
+    e_to Corridor8, s_to Corridor10, w_to LibraryDoor,
+  has light;
+
+AutoDoor LibraryDoor "door" with found_in Corridor9 Library;
+
+Room Library "Library"
+  with
+    description "This library is one of the biggest rooms in the building. \
+      High bookshelves line all the walls while others divide the floor into \
+      narrow strips running between the eastern and westen walls. \
+      In the free area next to the door, there is a table and a chair.",
+    singledest 'library',
+    e_to LibraryDoor,
+  has light;
+
+Object -> LibraryBooks "books"
+  with
+    article "the",
+    name "books" "book",
+    description "There are hundreds of books here, mainly on engineering and science.",
+    before [;
+    Take, Remove, Borrow:
+      "The books are mainly on techical matters, which \
+      you don't have time to delve into.";
+    ],
+  has static concealed;
+
+Object -> LibraryLewdBooks "lewd books"
+  with
+    article "the",
+    name "books" "book" "lewd",
+    parse_name [; return NastyName(self, 2); ],
+    before [;
+      if(self has general)
+        "You have more serious things at hand than looking for lewd books.";
+      give self general;
+      "If there are any lewd books at all, they are on the shelves out of reach.";
+    ],
+  has static concealed;
+
+Object -> LibraryShelves "bookshelves"
+  with
+    article "some",
+    name "shelf" "shelves" "bookshelf" "bookshelves" "high",
+    description "The bookshelves go from the floor and almost all the \
+      way up to the ceiling. You presume that the shelves that are out of \
+      reach are used for lewd books.",
+    before [;
+     Receive:
+      "This is a library, not a rubbish dump. Please get rid of your \
+      unwanted possessions elsewhere.";
+     Turn, Push:
+      if(self hasnt general) {
+        give self general;
+        "The bookshelf gives way! As you increase the pressure, it slowly \
+        disappears into the wall. No, wait, it was just a few books that \
+        slid in, the bookshelf stands perfectly still.";
+      }
+      else
+        "It's pointless. Real bookshelves don't contain secret passages.";
+    ],
+  has static concealed;
+
+Object -> LibraryTable "reading table"
+  with
+    name "sturdy" "heavy" "expensive" "reading" "table",
+    description "It is a sturdy table made from some heavy, probably \
+      expensive kind of wood that you don't recognize.",
+    before [;
+     Take, Push, Pull, Turn: "You vs gravity: 0-",++(self.number),".";
+    ],
+    number 0,
+  has static concealed enterable supporter; 
+
+Object -> LibraryChair "reading chair"
+  with
+    name "sturdy" "terribly" "heavy" "reading" "chair",
+    description "It is sturdy and terribly heavy, but comfortable to \
+      sit and read in.",
+    before [;
+     Take, Turn, Push, Pull: "It's heavier than you thought a chair \
+      could be. You can hardly move it at all.";
+    ],
+  has static concealed enterable supporter;
+
+Room Corridor10 "Corridor"
+  with
+    description "The corridor leads north and south. A large \
+      metal slide door is set in the western wall. A call button \
+      sits in the wall next to the door.",
+    n_to Corridor9, s_to Corridor11,
+    w_to ElevatorDoor, in_to ElevatorDoor,
+  has light;
+
+Room CCorridorI "Concrete Corridor"
+  with
+    description "A grey corridor leading east ends at a heavy \
+      elevator door in the western wall and to the south a heavy steel door \
+      can be seen. A call button is located next to the elevator door.",
+    w_to ElevatorDoor, in_to ElevatorDoor, e_to CCorridorII,
+      s_to HeavyDoor,
+  has light;
+
+AutoDoor HeavyDoor "steel door"
+  with
+      name "steel" "heavy",
+    description [;
+      print "The door is rather massive and it seems to be connected to
+        some sort of door closer.";
+      if(self has open)
+        " The door's lock bolt is spring-loaded and fits into a sturdy \
+        pocket in the door frame.";
+      "";
+    ],
+    found_in CCorridorI CellarStore,
+    pass_door [person query;
+
+      ! If query is true, we only want to know if it's possible to pass
+      
+      if(query==true) {
+        if(person~=player) {
+          rtrue;
+        }
+        else {
+          if(self has locked && location~=CellarStore)
+            rfalse;
+          rtrue;
+        }
+      }
+      if(person==player) rfalse; ! Player calls only for query
+      
+      !      print "THE REAL THING!";
+      if(self has open) {
+        if(superparent(person)==CellarStore)
+          give self ~open;
+        return self.door_to(superparent(person));
+      }
+      if(superparent(person)==CellarStore) {
+        if(location==CellarStore or CCorridorI)
+          print "^",(The) person," pushes ",(the) self," open and enters \
+            the corridor.^";
+      }
+      else if(location==CellarStore)
+        print "^You hear a key being put in the lock, and then ",(the) self,
+          " swings open. ",(The) person, " enters.^";
+      else if(location==CCorridorI)
+        print "^",(The) person," puts a key in the lock, swings ",(the) self,
+          " open and walks south.^";
+        give self open;
+      move person to self.door_to(superparent(person));
+      if(person in CellarStore)
+        give self open;
+      else
+        give self ~open;
+      rtrue;
+    ],
+    before [;
+
+    if(location==CCorridorI && Padlock in CellarStore && child(BoltPocket)==0) {
+      ! force John or Petra to come to the cellar store
+      if(John.mission_nr~=misGotoCellarStore && Petra.mission_nr~=misGotoCellarStore) {
+        EnqueueMission(random(John, Petra), misGotoCellarStore);
+      }
+    }
+
+    Receive: "You can't put anything on the door!";
+     Open:
+      Puzzles.PuzzleSeen(CellarStorePuzzle);
+      if(location==CellarStore) {
+        give self open;
+        "You open the door, leaving it open.";
+     }
+     Pull, Push, PushDir:
+      if(self has open)
+        if(children(BoltPocket)==0) {
+          give door ~open;
+          print_ret "As you tug at ",(the) self,", it slams shut.^";
+        } else <<Close self>>;
+
+      <<Open self>>;
+     Close:
+       if(Soap in BoltPocket && Soap hasnt general)
+         "You can't close the door with the soap in the bolt pocket.";
+       if(Candle in BoltPocket && Candle hasnt general)
+         "You can't close the door with the candle in the bolt pocket.";
+    ],
+    after [;
+      Close:
+        if(self has locked) "The door clicks locked.";
+    ],
+    with_key -1,
+  has lockable locked supporter;
+
+Object -> DoorCloser "door closer"
+  with 
+    name "door" "closer",
+    parse_name [; return NastyName(self); ],
+    description "It's a metal construction at the top of the door, on the \
+      outside. When left to itself, the door closes automatically. If you \
+      open the door fully, though, it stays open until you give it a light \
+      pull.",
+  has static concealed;
+
+Object -> BoltPocket "bolt pocket"
+  with
+    name "bolt" "pocket" "hole" "sturdy",
+    description [;
+      print "The bolt pocket is set in the door frame, and it's where \
+            the spring bolt of the lock is inserted when the door is \
+            closed. The pocket itself is a small square hole, a few \
+            centimetres deep";
+      if(Candle in self) {
+        if(Candle has general) 
+          print ". There is a candle fit in the bolt pocket";
+        else
+          print ". There is a candle sticking out of the bolt pocket";
+      }
+      if(Soap in self) {
+        if(Soap has general) 
+          print ". There is a bar of soap fit in the bolt pocket";
+        else
+          print ". There is a soap bar sticking out of the bolt pocket";
+      }
+      ".";
+    ],
+    unlock_door [;
+      give HeavyDoor ~locked;
+      Achieved(13);
+      Puzzles.PuzzleSolved(CellarStorePuzzle);
+    ],
+    before [;
+      if(HeavyDoor hasnt open) "You must open the door first.";
+     Receive:
+      if(children(self)>0) "There is already something in the bolt pocket.";
+      if(noun==Candle or Soap) rfalse;
+      print_ret (The) noun, " doesn't fit in the pocket.";
+    ],
+    after  [;
+     Receive:
+      if(noun==Candle or Soap && noun hasnt general)
+        print_ret "It is a tight fit, but you manage to push ",
+                  (the) noun, " into the bolt pocket. A part of \
+                  it sticks out, though.";
+      self.unlock_door();
+     LetGo:
+      give HeavyDoor locked;
+    ],
+  has static concealed container open;
+
+Room CellarStore "Storage Room"
+  with
+    description "A small storage room with a lone exit to the north. There \
+      are drawers along the walls with all sorts of equipment needed for the \
+      research.",
+    doubledest 'cellar' 'storage',
+    namedest "The Storage Room in the Cellar",
+    n_to HeavyDoor,
+  has light;
+
+Object -> Drawers "drawers"
+  with
+    article "some",
+    name "some" "set" "of" "drawers" "drawer" "equipment" "research"
+      "test" "tubes" "tube" "glass" "vial" "vials" "chemical" "stuff"
+      "for" "experiment" "thing" "things",
+    description "Various stuff for chemical experiments, like glass vials, \
+      test tubes and a lot of things you have never seen before. Chemistry \
+      was never your favourite subject.",
+    before [;
+     Examine,Search:;
+     Take, Remove:
+      "Not much point in dragging it around. You wouldn't know how to use \
+      it anyway.";
+     default:
+      "Better just leave that aside and get on with your business. You're \
+      wasting time.";
+    ],
+  has scenery;
+
+Object -> Padlock "padlock"
+  with
+    name "padlock",
+    describe [;
+      if(self hasnt moved) "^There's a padlock lying on a bench here.";
+      if(self has general) {
+        rtrue;
+!        if(ChainA in location) rtrue;
+!        "^The padlock is connecting the chain to the grating.";
+      }
+      rfalse;
+    ],
+    description [;
+      if(self has general)
+        "The padlock is currently used to connect the chain to the grating.";
+
+      print "Just an ordinary padlock, except that the key seems to be stuck in the lock. \
+        The padlock can still be opened and closed, but this deficit does render it \
+        rather useless as a protection against theft. That may be why it's not in use \
+        at the centre. The padlock is ";
+      if(Padlock has open) "open.";
+      "closed.";
+    ],
+    before [x;
+     Take, Remove:
+      if(self has general)
+        print_ret (The) self, " is attached to the chain, and you can't move it.";
+
+      if(self in CellarStore) {
+        x=child(CellarStore);
+        while(x~=0 && (x hasnt animate || x==player))
+          x=sibling(x);
+        if(x)
+          "As you bend down, ",(the) x," gives you an odd look over the \
+            shoulder and you understand that you are not supposed to loot \
+            the storage.";
+      }
+    Lock, Unlock:
+       "There is already a key stuck in the lock, making it easy to open and \
+       close the padlock, but making its usage rather limited.";
+    Close:
+      rfalse;
+    Open:
+      if(self has general) {
+        give self open;
+        give self ~general;
+        <<UnTie ChainA Grating>>;
+      }
+    Examine: rfalse;
+    default:
+      if(self has general) {
+        print_ret (The) self, " can't be manipulated like that \
+                  while being attached to the chain.";
+      }
+    ],
+  has openable open;
+
+Object Battery "battery"
+  with
+    name "battery",
+    description "A battery of the kind used in cars.",
+    before [x;
+     Take, Remove:
+      if(self in CellarStore) {
+        x=child(CellarStore);
+        while(x~=0 && (x hasnt animate || x==player))
+          x=sibling(x);
+        if(x)
+          "As you bend down, ",(the) x," gives you an odd look over the \
+            shoulder and you understand that you are not supposed to loot \
+            the storage.";
+      }
+     ConnectTo:
+        if(second==Bomb) <<ConnectTo Cord Battery>>;
+    ],
+  has weird transparent;
+
+Object Elevator "Elevator"
+  with
+    current_floor 0,
+    requested_floor 0,
+    description "This is a standard size elevator cabin with the \
+      automatic door to the east. Mounted on a pad set into the \
+      northern wall are two buttons. Next to the pad is a sign.",
+    daemon [; ! move the elevator after call button press
+      if(self.current_floor==self.requested_floor) {
+        if(ElevatorDoor hasnt open) {
+          give ElevatorDoor open;
+          if(TestScope(ElevatorDoor))
+            "^A faint 'ping' is heard, and the elevator door slides open.";
+          rtrue;
+        } else {
+          StopDaemon(Elevator);
+          give ElevatorDoor ~open;
+          if(TestScope(ElevatorDoor))
+            "^The elevator door slides shut.";
+          rtrue;
+        }
+      } else {
+        self.current_floor=self.requested_floor;
+        if(TestScope(ElevatorDoor))
+          if(player in Elevator)
+            "^You feel the elevator moving.";
+          else
+            "^You hear the elevator moving.";
+      }
+    ],
+    e_to ElevatorDoor, out_to ElevatorDoor,
+  has light;
+
+Object -> Sign1 "sign"
+  with
+    name "sign",
+    description "You can see the words ~UP~ and ~DOWN~ written on \
+      the sign. After ~DOWN~ someone has written ~to hell~ with \
+      lead.",
+  has static concealed;
+
+Object -> UpButton "up button"
+  with
+    name "up" "u" "button",
+    article "an",
+    before [;
+    Push:
+      Elevator.requested_floor=1;
+      StartDaemon(Elevator);
+      "Done.";
+    ],
+  has static concealed;
+
+Object -> DownButton "down button"
+  with
+    name "down" "d" "button",
+    before [;
+    Push:
+      Elevator.requested_floor=0;
+      StartDaemon(Elevator);
+      "Done.";
+    ],
+  has static concealed;
+
+Object CallButton1 "call button"
+  with
+    name "call" "button",
+    found_in Corridor10 CCorridorI,
+    before [;
+    Push:
+      if(player in Corridor10) Elevator.requested_floor=1;
+      else Elevator.requested_floor=0;
+      StartDaemon(Elevator);
+      "Done.";
+    ],
+  has static concealed;
+
+Object ElevatorDoor "elevator door"
+  with
+    article "an", name "elevator" "door" "slide" "metal",
+    found_in Elevator Corridor10 CCorridorI,
+    describe [;rtrue;],
+    before [;
+     Open, Unlock, Lock, Remove, Pull, Push:
+      "Have you ever seen one of those old elevator doors with handles on \
+      them, that you open just like a normal door? This isn't one of them. \
+      Press the button.";
+    ],
+    door_to [;
+      if(player in Elevator)
+        if(Elevator.current_floor==0) return CCorridorI;
+        else return Corridor10;
+      return Elevator;
+    ],
+    door_dir [;
+      if(player in Elevator) return e_to;
+      return w_to;
+    ],
+  has door static openable locked;
+
+Room CCorridorII "Concrete Corridor"
+  with
+    description [;
+      print "The grey walls continue both east and west. A \
+        yellow sign hangs from the ceiling, approximately three \
+        metres above your head. A green metal door leads north. \
+        Further to the east you see a video camera pointed eastwards, \
+        monitoring the end of the corridor where an impressive door is set.^";
+    ],
+    after [;
+     Go:
+      if(noun==s_obj) {
+        give LowStairsDoor ~open;
+        print "^The door closes behind you.^";
+      }
+    ],
+    singledest 'cellar',
+    doubledest 'concrete' 'corridor',
+    namedest "Concrete Corridor in the Cellar",
+    w_to CCorridorI, e_to CCorridorIII, n_to LowStairsDoor,
+  has light;
+
+Object -> DummyCamera "video camera"
+  with
+    name "video" "camera",
+    parse_name [; return NastyName(self); ],
+    before [;
+    Examine: "The camera is further east, monitoring the east \
+             end of the corridor.";
+    default: "The camera is further east.";
+    ],
+  has static concealed;
+
+Object -> DummySecurityDoor "impressive door"
+  with
+    name "impressive" "door",
+    article "an",
+    before [;
+     Examine:
+      PrintOrRun(SecurityDoor,description);
+      rtrue;
+     default: "The impressive door is further east.";
+    ],
+  has static concealed;
+
+Object -> Sign2 "sign"
+  with
+    name "sign" "yellow",
+    description "In large letters it reads ~SECURITY LAB - keep out~.",
+  has static concealed;
+
+Room CCorridorIII "Concrete Corridor"
+  with
+    description [;
+      print "The corridor ends at an impressive metal door, \
+        about 3 times 2 metres with no handle on it";
+      if(SecurityDoor has open) print ", currently open";
+      ". A camera set in the \
+      ceiling scans the area. Next to the door there is a delicate \
+      piece of electronics with a numeric keypad and an LCD display.";
+    ],
+    before [;
+    Jump: "You still can't reach the video camera.";
+    ],
+    w_to CCorridorII, e_to SecurityDoor,
+  has light;
+
+Object -> ElectronicLock "electronic lock"
+  with
+    number 0, ! successful codes (bitmask)
+    codes 0 0 0 0,
+    article "an",
+    name "delicate" "piece" "of" "electronic" "lock" "LCD" "display" "numeric" "keypad",
+    description [;
+      if(self.number==15)
+        print "The lock is a delicate piece of electronics with a \
+          numeric keypad and an LCD display. The message \
+          ~ALL CODES ACCEPTED~ is flashing on the display.";
+      else
+        print "The lock is a delicate piece of electronics \
+          with a numeric keypad and an LCD display. The \
+          display shows ~PLEASE ENTER NEXT CODE~.";
+      #IFDEF DEBUG;
+      print "^^Below the keypad someone has written: ",
+        self.&codes-->0,", ",
+        self.&codes-->1,", ",
+        self.&codes-->2,", ",
+        self.&codes-->3,".";
+      #ENDIF;
+      "";
+    ],
+    before [i j k;
+     SetTo:
+!      if(~~(inp2==1))
+!        "There are only numbers on this keypad.";
+      if(second>999)
+          "As you type the fifth digit, the display flashes ~ILLEGAL CODE~ \
+        for a moment before it goes back to displaying ~PLEASE ENTER NEXT CODE~.";
+
+      for(i=0,j=1 : i<4 : i++,j=j*2)
+        if(second==self.&codes-->i) {
+          if((self.number & j)==0)
+            break;
+          k=j;
+        }
+
+      if(i>3) {
+          print "You type ", second, " on the keypad. The lock emits a faint \
+              beep.^^~WRONG CODE. RESTARTING~ flashes on the \
+              display for a moment  before it goes back to displaying \
+              ~PLEASE ENTER NEXT CODE~.^";
+        if(SecurityDoor has open)
+          print "^The door closes silently, and a loud clicking sound is \
+                heard from it.^";
+        self.number=k;
+        give SecurityDoor ~open;
+        give SecurityDoor locked;
+      } else {
+          print "You type ", second, " on the keypad. The lock emits a faint \
+              beep.^^~CODE ACCEPTED~ flashes on the \
+              display for a moment";
+        self.number=self.number | j;
+      
+        if(self.number==15 && SecurityDoor hasnt open) {
+          give SecurityDoor open;
+          give SecurityDoor ~locked;
+          Achieved(6);
+          ". Then the text on the display \
+          changes to: ~ALL CODES ACCEPTED~.^^You hear clicking sounds \
+          from the door, as the latch bolts are withdrawn and the \
+          door slowly opens.";
+        } else
+          " before it goes back to displaying ~PLEASE ENTER NEXT CODE~.";
+      }
+      rtrue;
+    ],
+  has static concealed;
+
+Object -> VideoCamera "video camera"
+  with
+    name "video" "camera",
+    parse_name [; return NastyName(self); ],
+    before [;
+    Examine:
+      "The camera is mounted in the ceiling and it is aimed at you!";
+    ThrownAt:
+      move noun to parent(self);
+      print_ret (The) noun, " hits ", (the) self,
+                " and falls to the floor.";
+     default:
+      "The camera is mounted in the ceiling, high above you.";
+    ],
+  has static concealed;
+
+Room SecurityLab "Security Lab"
+  with
+    number 0,
+    name "bags" "dust" "structures",
+    description "You are in some sort of lab. There are \
+      sterilised plastic bags all over, containing all from dust \
+      to obscure metal structures. The international symbol of \
+      radioactivity is decorating many of them making you feel \
+      slightly uneasy. The doorway to the west looks inviting.",
+    each_turn [;
+      if(++self.number==2)
+        "^You feel uneasy as you remember the aliens warning \
+        you about the sphere being radioactive.";
+    ],
+    w_to SecurityDoor,
+    cant_go "The only way out is west, through the security door.",
+    doubledest 'security' 'lab',
+  has light;
+
+Object -> Sphere "sphere"
+  with
+    name "metal" "alien" "sphere" "surface" "symbols" "symbol"
+      "scribblings" "characters",
+    initial "In the centre of the room you can see a small \
+      metal sphere, lying on a piece of black, soft fabric. \
+      The surface of the sphere has partly melted down but on the \
+      undamaged parts you can spot strange symbols and colour \
+      combinations which seem to bear a meaning in themselves, \
+      although that meaning is entirely lost on you.",
+    description 
+      "It's full of scribblings made in an alphabet unfamiliar \
+      to you. The surface may be scorched and damaged, but the shell \
+      still seems somewhat intact. It feels hot.",
+    revealed [person;
+      deadflag=3;
+      print (The) person, "'s jaw drops as ";
+      if(person has female) print "she"; else print "he";
+      print " sees that the sphere has been brought out of the security lab. \
+            Obviously distressed at something ";
+      if(person has female) print "she"; else print "he";
+      print " runs away. Moments later alarm sounds are heard and Williams and \
+            Schwartz comes running. While Schwartz is holding you Williams \
+            puts the sphere in a thick metal zipper. You are then kept under \
+            strict surveillance until the police arrives.^";
+    ],
+  ;
+
+Object SecurityDoor "security door"
+  with
+    name "security" "door" "impressive" "massive" "smooth" "shiny",
+    found_in CCorridorIII SecurityLab,
+    describe [;rtrue;],
+    description [;
+      if(location==SecurityLab)
+        "The door opens outwards and has a large handle for this purpose. \
+        Except for that, it is all smooth and shiny.";
+      else
+        "It is a quite massive door, made from some shiny metal and \
+        absolutely featureless. There is an electronic lock mounted \
+        next to it.";
+    ],
+    door_to [;
+      if(player in CCorridorIII) return SecurityLab;
+      return CCorridorIII;
+    ],
+    door_dir [;
+      if(player in CCorridorIII) return e_to;
+      return w_to;
+    ],
+    before [;
+    Open: if(player in CCorridorIII) "Use the keypad instead.";
+    Close: if(player in SecurityLab && self has open)
+             "The door can only be closed from the outside.";
+    ],
+    after [;
+    Close: 
+      give self ~open;
+      give self locked;
+      ElectronicLock.number=0;
+      "As you close the door, loud clicks are heard as it automatically \
+      locks itself.";
+    ],
+  has door static openable locked;
+
+Room Corridor11 "Corridor"
+  with 
+    description "Corridors lead off to the east and north, and doors lead \
+      west and south.",
+    n_to Corridor10, e_to Corridor12,
+    w_to C11WDoor, s_to C11SDoor,
+  has light;
+
+AutoDoor C11WDoor "kitchen door"
+  with
+    name "kitchen",
+    found_in Corridor11 Kitchen,
+    description [;
+      if(location==Corridor11 || self has open)
+        "There is a sign on the door which reads ~4: Kitchen~";
+      "It's an ordinary wooden door.";
+    ];
+
+AutoDoor C11SDoor "living room door"
+  with
+    name "living" "room",
+    found_in Corridor11 LivingRoom,
+    description [;
+      if(location==Corridor11 || self has open)
+        "There is a sign on the door which reads ~2: Living Room~";
+      "It's an ordinary wooden door.";
+    ];
+
+Room Kitchen "Kitchen"
+  with
+    name "wire" "wires",
+    description "This looks just like any other kitchen you've seen, \
+      except for the tasteless colour of the wallpaper. The northern wall \
+      is partly hidden behind a refrigerator. Beside the fridge, there is \
+      a kitchen counter with a sink. Under the counter there are two drawers. \
+      Strangely enough, you \
+      can't spot a stove, but there is an area where one would fit in. \
+      Maybe it's just being repaired. There are exits to the east \
+      and south.",
+    singledest 'kitchen',
+    e_to C11WDoor, s_to DinnerHall,
+  has light;
+
+Object -> Wallpaper "wallpaper"
+  with
+    name "tasteless" "colour" "of" "wallpaper" "lilac" "pink" "squirrel"
+      "squirrels" "background", 
+    description "You never did claim you have that much of a taste when \
+      it comes to furnishing a house, but you're sure about this wallpaper. \
+      The pattern consists of large pink squirrels running over a lilac \
+      background. This is probably a bad place to be drunk in.",
+    before [;
+     Examine, Search:;
+     Take:
+      "God forbid! That is the last thing you want to steal from here.";
+     default:
+      "You have a vivid imagination, don't you? It just wallpaper. It's \
+      there to cover the walls. It may be hard to imagine what the walls \
+      look like that make people this desperate to cover them, but I guess \
+      that's their business.";
+    ],
+  has scenery;
+
+Object -> MicrowaveOven "microwave oven"
+  with
+    name "microwave" "micro" "wave" "oven",
+    description "It is a perfectly ordinary microwave oven, except that \
+      the digital keypad is broken. The programming is now made by connecting \
+      the right wires on the front. Mind you, not so long ago, this was the \
+      only way of programming any computer.",
+    before [;
+     Examine:;
+     Open, Close:
+      "Since the keypad broke, the oven is opened and closed by connecting \
+      the right wires on the front. You don't know which ones do what. Better \
+      not touch it.";
+     default:
+      "You are not hungry, there are no hungry hackers around, and someone \
+      else may actually need the microwave oven for something. You'd better \
+      leave it alone.";
+    ],
+  has scenery;
+
+Object -> CentreKitchenCupboard "cupboard"
+  with
+    name "cupboard" "cupboards",
+    description
+      "The cupboards are plain white and quite roomy. Everyone have \
+      their own cupboard where they can keep their stuff. You have a \
+      feeling people might get upset if you started searching their \
+      cupboards, so you don't.",
+    before [;
+     Examine:;
+     default:
+      "Better not mess with it. Everyone have their own little cupboard here, \
+      and they probably intend to give you one as well, only you won't be \
+      around by then.";
+    ],
+  has scenery static;
+
+Object -> KitchenThings "eating devices"
+  with
+    name "plates" "plate" "glasses" "cutlery" "fork" "spoon"
+      "knives" "forks" "spoons" "eating" "devices" "device" "things" "cooking",
+    article "some",
+    description "There's nothing special about it.",
+    before [;
+    Take, Remove:
+      "You are not feeling hungry nor thirsty, and it's not yours anyway. \
+      You think better of it.";
+    ],
+  has scenery;
+
+Object -> NoStove "lack of stove"
+  with
+    name "lack" "of" "stove" "area" "where" "would" "fit" "in" "floor", 
+    description "It's just a piece of floor with the special kind of \
+      dirt that only seems to gather under stoves and refrigerators, \
+      the kind that can't be removed without the stuff the professionals \
+      have. That's how they survive.",
+    before [;
+     Examine, Search:;
+     Rub:
+      "Sorry, but you're not a professional. Not in this area.";
+     default:
+      "I'll let you in on a secret: This piece of floor is not important. \
+      Don't tell anyone I told you.";
+    ],
+  has scenery;
+
+ScenerySupporter -> KitchenCounter "kitchen counter"
+  with
+    name "kitchen" "counter",
+    parse_name [; return NastyName(self); ],
+    description [;
+      self.write_contents(TRUE, "There are two drawers under the counter.");
+    ],
+  has enterable;
+
+Bottle -> -> TeaPot "clay kettle"
+  with
+    name "kettle" "clay" "pot",
+    liquidspace 10;
+
+Sink -> KitchenSink "sink"
+  with
+    name "regular" "stainless" "steel" "sink",
+    description [;
+      "It's your regular stainless steel sink.";
+    ],
+    before [;
+      Receive: if(noun hasnt animate && ~~(noun ofclass Liquid))
+        "Better put it on the kitchen counter instead.";
+    ];
+
+Tap -> KitchenSinkTap "tap"
+  with
+    name "kitchen" "tap",
+    parse_name [; return NastyName(self); ],
+    description "It is mounted just above the sink, as one would perhaps \
+      expect.";
+
+SceneryContainer -> UpperDrawer "upper drawer"
+  with
+    name "upper" "top" "drawer",
+    article "an",
+  has openable;
+
+Bottle -> -> Glass "drinking glass"
+  with
+    name "drinking" "glass",
+    liquidspace 2;
+
+ 
+SceneryContainer -> LowerDrawer "lower drawer"
+  with 
+    name "lower" "bottom" "drawer",
+  has openable;
+
+Object -> -> Knife "knife"
+  with
+    name "knife" "shaft" "small" "thin" "sharp" "nicely" "nice" "plastic"
+      "handle",
+    description "The knife is small and thin. It's very sharp, and \
+      offers a nicely designed shaft made of plastic.",
+    before [;
+    Insert:
+      if(second==DoorChink) {
+        if(LockedOfficeDoor has locked) {
+          give LockedOfficeDoor ~locked;
+          give LockedOfficeDoor ~lockable;
+          Achieved(14);
+          Puzzles.PuzzleSolved(LockedOfficePuzzle);
+          "Slowly you insert the knife in the door chink, and make \
+          some attempts to withdraw the latch bolt. After a few tries, \
+          your effort is rewarded. A silent click, and the door is \
+          unlocked!";
+        } else {
+          "The door is already unlocked, you don't have to \
+          pick the lock again.";
+        }
+      }
+    ];
+
+Bottle -> -> GreenBottle "green bottle"
+  with
+    name "bottle" "green",
+    liquidspace 7;
+
+SceneryContainer -> Fridge "fridge"
+  with
+    number 0,
+    name "refridgerator" "fridge",
+    description [;
+      print "A rather large fridge stands against the north wall.";
+      self.write_contents(false, " It contains ", " It is empty");
+      print "^";
+    ],
+    before [;
+     LookUnder:
+      "Yes, just as you suspected, the floor under the fridge is covered \
+      with that special kind of dirt that can't be removed except by \
+      professionals.";
+    ],
+    each_turn [;
+      if(self has open) ++self.number; else self.number=0;
+    ],
+  has openable;
+
+Object -> -> Meat "meat"
+  with 
+    article "some",
+    name "piece" "of" "horse" "tainted" "meat" "raw",
+    description "The meat is probably horse, and it smells a little \
+      tainted.",
+    before [;
+    Eat: "Raw meat doesn't agree with you.";
+    ],
+    after [; Take, Remove: give self ~general; ],
+  has edible;
+
+Object StuckKnife "stuck knife"
+  with
+    name "stuck" "knife" "shaft" "small" "thin" "sharp" "nicely" "nice" "plastic"
+      "handle",
+    describe [; "^A knife has been deeply buried into the wall."; ],
+    description "The knife has dug deeply into the wall.",
+    before [;
+    Examine, Search: rfalse;
+    Take, Pull, Remove:
+       give self general;
+       move Knife to player;
+       remove self;
+       ResetVagueWords(Knife);
+       "You pull out the knife.";
+    default: "You'd better pull out the knife first.";
+    ],
+  has static;
+   
+Room DinnerHall "Dining Hall"
+  with
+    description "This seems to be the place where the personnel enjoy \
+      their meals. Naturally, there is a table and some chairs for this \
+      purpose. You can enter the living room to the east, or the kitchen \
+      to the north.",
+    doubledest 'dining' 'hall',
+    n_to Kitchen, e_to LivingRoom,
+  has light;
+
+ScenerySupporter -> DiningTable "dining table"
+  with
+    name "dining" "table",
+    description [;
+      self.write_contents(TRUE, "Just an ordinary dining table.");
+    ],
+    before [;
+      Push, Pull, Take:
+        "You rearrange the furniture for a while. Certainly the staff will \
+          now work and eat a lot better. The work done at the research \
+          centre will be finished in no time and the world will be a \
+          better place to live in.";
+    ],
+  has enterable;
+
+Object -> DummyChairs "chairs"
+  with
+    name "chairs",
+    article "some",
+    description "They look cheap. The management must have spent their \
+        money on something else.",
+    before [;
+      Examine:;
+      default: "You probably mean ~a chair~, not ~the chairs.~";
+    ],
+  has pluralname scenery;
+
+ScenerySupporter -> DiningChair "dining chair"
+  with
+    name "dining" "chair",
+    description [;
+      self.write_contents(TRUE, "Looks cheap. They must have spent their \
+        money on something else.");
+    ],
+    before [;
+      Push, Pull, Take:
+        "You rearrange the furniture for a while. Certainly the staff will \
+          now work and eat a lot better. The work done at the research \
+          centre will be finished in no time and the world will be a \
+          better place to live in.";
+    ],
+  has enterable;
+
+Room LivingRoom "Living Room"
+  with
+    description [;
+      print "You are in the social centre of the station. A large \
+      sofa, facing the TV-set, dominates the room. ";
+      if(Painting.wall>0 && superparent(Painting)==self) {
+        print "A non-figurative painting, representing the president of \
+          the USA, is hanging on ",(the) Painting.wall,". ";
+      }
+      "You can leave the room to the north and west.";
+    ],
+    doubledest 'living' 'room',
+    w_to DinnerHall, n_to C11SDoor,
+    before [;
+    Jump:
+      if(noun>0) rfalse;
+      if(player in TVSofa) {
+        if(TVSofa has general)
+          "No, that's all. There will be no more jumping in sofas.";
+        if((Sofa has general) || (ArmChair has general)) {
+          give TVSofa general;
+          "It seems that you just have to do this all the time. OK, you win, \
+          you jump a few times in the sofa.";
+        }
+        "Why can't you just sit still and relax for a moment?";
+      }
+    ],
+  has light;
+
+Object -> TrophyCase "trophy case"
+  with
+    name "trophy" "case",
+    initial "A trophy case stands against the wall.",
+    description [;
+      print "Except for a wooden base, the trophy case is completely \
+            made of glass. You imagine people use it to display fine \
+            glassware or souvenirs. ";
+      if(children(self)==0) {
+        print "There doesn't seem to be any fine glassware around, \
+              because the shelves are all empty";
+      } else {
+        print "It contains ";
+        WriteListFrom(child(self), ENGLISH_BIT + RECURSE_BIT);
+      }
+      ".";
+    ],
+    before [;
+      Attack: "Vandalizing the trophy case would only draw \
+              unwanted attention to you.";
+      Receive: if(self notin LivingRoom)
+        <<Drop noun>>;
+    ],
+    after [x;
+    Receive:
+      print "You put ", (the) noun, " in the trophy case.^";
+      if(notify_mode==1) print "^[Your score has just gone up.]^";
+      if(children(self)>7) {
+        print "^Williams and Fulham, who have been observing your \
+              manic search for ~treasures~ with growing concern, \
+              decide that enough is enough. They call for an \
+              ambulance to take you to a mental clinic. Your chances \
+              of retrieving the sphere are now virtually nil.^^";
+        style bold;
+        print "   *** You have failed ***^^";
+        style roman;
+        print "[MORE]";
+        @read_char 1 0 0 x;
+        print "^^Just kidding! The trophy case disappears, and all \
+              items in it fall to the floor. You also lose all your \
+              treasure points, since this game doesn't use them.^";
+        while(child(self)~=0) move child(self) to parent(self);
+        remove self;
+        remove TrophyCaseBase;
+        remove TrophyCaseGlass;
+      }
+      rtrue;
+    LetGo:
+      print "Taken.^";
+      if(notify_mode==1) print "^[Your score has just gone down.]^";
+      rtrue;
+    ],
+  has container openable open static transparent;
+
+Object -> TrophyCaseBase "base"
+  with
+    name "base" "wood" "wooden",
+    description "The base of the trophy case isn't important.",
+    has scenery;
+
+Object -> TrophyCaseGlass "trophy case glass"
+  with
+    name "glass" "wall" "walls" "shelves",
+    description "The glass walls of the trophy case aren't important.",
+    has scenery;
+
+ScenerySupporter -> TVSofa "sofa"
+  with
+    name "sofa" "livingroom",
+    description [;
+      self.write_contents(TRUE, "It's quite comfortable, but a little low \
+                                for your taste. The colours suggest that it's old.");
+    ],
+    before [;
+    Search: "Two coins, a used piece of bubble gum and some popcorn. \
+            You take none of it.";
+    ],
+  has enterable;
+
+Object -> Painting "painting"
+  with
+    name "abstract" "non" "figurative" "nonfigurative" "non-figurative"
+      "painting" "of" "the" "president" "united" "states" "america" "usa",
+    description "You can't make out which president the artist wanted \
+      to portrait. The painting is too abstract.",
+    wall s_obj,
+    taken 0,
+    react_before [;
+     Go:
+      if(noun==n_obj or w_obj && self.wall<n_obj) {
+        give tw_waiting on;
+        "You had better put the painting back on the wall first. Remember our \
+        agreement?";
+      }
+    ],
+      
+    before [;
+     Push, PushDir:
+      if(self hasnt moved)
+        "Moving the painting reveals no safe.";
+     Transfer, PutOn:
+      if(self.wall==second)
+        "It's already hanging on ",(the) self.wall,".";
+      else {
+        if(second>=n_obj && second<=w_obj) {
+          self.wall=second;
+          give self concealed;
+          give self moved;
+          move self to superparent(self); ! LivingRoom
+          "Ok. You put the painting on ",(the) self.wall,".";
+        }
+        else if(second>w_obj && second<=sw_obj)
+          "This is the rectangular kind of room, which is rather \
+          popular in many western cultures. It doesn't have a ",
+          (address) second.&name-->1," wall.";
+      }
+     Insert:
+      if(self in player)
+        "I thought we had a deal. You look at the painting for a while, and \
+        then you put it back on the wall. You're not going to steal it.";
+      "Oh no, you're not stealing the painting.";
+     Take, Remove:
+      if(self.wall==0) rfalse;
+      if(self has general) {
+        move self to player;
+        give self moved;
+        self.wall=0;
+        give self ~concealed;
+        if(self.taken==0) {
+          self.taken=1;
+          "I'll tell you what we'll do. You can hold it for a while, \
+          pretending you're just looking at it, but then you have to put \
+          it back again, ok?";
+        }
+        else
+          "You don't give up that easily, now do you? OK, you take it \
+            down again.";
+      }
+      else {
+        give self general;
+        META=1;
+        print "Mind you, the others may get really upset if you just walk \
+          off with the only painting in the building. Are you sure you \
+          want to risk that?^^>>";
+        if(YesOrNo())
+          "Well, I'm still not convinced that it's such a wise thing to do. \
+          I think we'll just leave it where it is, and you can go on to \
+          more important business.";
+        else
+          "I thought so. You don't want to arouse people's suspicions.";
+      }
+    ],
+  has concealed weird;
+
+Array CNN_programs table
+  "a news update"
+  "a news summary"
+  "a talk show"
+  "a business report"
+  "a documentary"
+  "a travelogue"
+  "an interview program";
+
+Array Classical_music table
+  "Turkish march by Mozart"
+  "Mozart's requiem"
+  "an aria from Mozart's The Magic Flute"
+  "Beethoven's 9th symphony"
+  "Hayden's fireworks music"
+  "a Bach toccata"
+  "a Vivaldi violin concert"
+  "a song by Schubert"
+  "Pachelbel's famous Canon";
+
+Array MTV_Videos table
+  "Smells Like Teen Spirit with Nirvana"
+  "The Prodigy featuring Donna Summer playing Breathe"
+  "Peter Gabriel's The Frog"
+  "The Smashing Pumpkin's Tonight Tonight"
+  "David Bowie singing Absolute Beginners"
+  "David Bowie's Ashes To Ashes"
+  "Satisfaction with Rolling Stones"
+  "Take On Me with Aha"
+  "Kayleigh with Marillion"
+  "Heat Seeker with AC/DC"
+  "a Weird Al Yankovic cover version of F@:ur Elise"
+  "Crime and the City Solution's cover version of Gymnopedie No. 2 by Erik Satie"
+  "Boyz II Men featuring Angus Young with a cover version of Yes Sir, I Can Boogie"
+  "London Calling with The Clash"
+  "I Don't Like Mondays with Boomtown Rats"
+  "Smells Like Teen Spirit played by the Boston Pops Orchestra"
+  "Holiday in Cambodia with Dead Kennedys"
+  "I Love Your Smile with Shanice"
+  "Boys Boys Boys with Sabrina"
+  "Kylie Minogue's megahit I Should Be So Lucky"
+  "Ace of Spades with Motorhead"
+  "Pink Floyd's Another Brick in the Wall part II"
+  "a techno version of Das Boot with U96"
+  "Everything Counts with Depeche Mode"
+  "Softcell's Tainted Love"
+  "Madonna's old hit Material Girl"
+  "Oprah Winfrey singing Jailhouse Rock"
+  "Arnold Schwarzenegger singing My Way"
+  "Whitney Houston singing I Will Always Love You"
+  "Sylvester Stallone doing a tear-jerking performance of Don't Cry For Me Argentina"
+  "David Hasselhoff with Night Rocker"
+  "good old ABBA with Mamma Mia";
+
+Object -> TV "television set"
+  with
+    channel 10, ! 3=Classical music, 10=MTV, 17=CNN
+    number 0,   ! currently played video
+    delay 0,    ! number of turns to play
+
+    name "tv" "television" "set",
+    description [;
+      print "The television set is a new wide-screen model, probably \
+            worth a fortune. There is an on/off switch and a channel \
+            selector on it. ";
+      if(self has on) {
+        switch(self.channel) {
+      3: "There is a classical music concert on channel 3.";
+        10: "The TV is showing MTV on channel 10.";
+        17: "The TV is showing CNN on channel 17.";
+        default: "The television set is turned on.";
+        }
+      } else {
+        "The television set is turned off.";
+      }
+    ],
+    add_to_scope ChannelSelector,
+    before [;
+     Examine: ! this is to remove double on/off messages
+      PrintOrRun(self,description);
+      rtrue;
+     Take,Remove:
+      "You don't just scamper off with people's TV-sets. Get civilized.";
+    ],
+    after [;
+    SwitchOn: self.channel=10; self.SelectNewProgram(); StartDaemon(self);
+    SwitchOff: StopDaemon(self);
+    ],
+    SelectNewProgram [x;
+      for(x=self.number: x==self.number:) {
+        switch(self.channel) {
+        3:  self.number=Classical_music-->random(Classical_music-->0);
+            self.delay=3+((self.number) & 1);
+        10: self.number=MTV_Videos-->random(MTV_Videos-->0);
+            self.delay=3+((self.number) & 1);
+        17: self.number=CNN_Programs-->random(CNN_Programs-->0);
+            self.delay=2+((self.number) & 1);
+        }
+      }
+    ],
+    daemon [;
+    switch(self.channel) {
+    3: ! classical music
+      --self.delay;
+      if(self.delay<0) {
+        self.SelectNewProgram();
+        if(location==LivingRoom) {
+          print_ret (string) random(
+            "^The music ends and the audience give the orchestra warm applauds.",
+            "^The music ends and the orchestra gets ready to play another piece.",
+            "^The audience applauds politely.");
+        }
+      }
+      if(location==DinnerHall || (location==Corridor11 && C11SDoor has open))
+        print_ret "^You hear music (", (string) self.number,
+          ") from a room nearby.";
+      if(location==LivingRoom)
+        print_ret "^A TV orchestra is playing ", (string) self.number, ".";
+    10:! MTV
+      --self.delay;
+      if(self.delay<0) {
+        self.SelectNewProgram();
+        if(location==LivingRoom) {
+          print_ret (string) random(
+            "^An annoying VJ is introducing the next video on the TV.",
+            "^The song stops and is replaced by another on the TV.",
+            "^The song fades out.");
+        }
+      }
+      if(location==DinnerHall || (location==Corridor11 && C11SDoor has open))
+        print_ret "^You hear music (", (string) self.number,
+          ") from a room nearby.";
+      if(location==LivingRoom)
+        print_ret "^The TV is showing a video of ",
+          (string) self.number, ".";
+    17: ! CNN
+      --self.delay; if(self.delay<0) self.SelectNewProgram();
+      if(location==LivingRoom) "^There is ", (string) self.number, " on CNN.";
+    }
+    ],
+  has switchable scenery supporter enterable;
+
+Object ChannelSelector "channel selector"
+  with
+    name "channel" "selector" "keypad" "led" "small",
+    description [;
+      print "The channel selector consists of a small LED, currently ";
+      if(TV hasnt on) print "dark"; else print "showing ", TV.channel;
+      print ", and a small keypad. [To change channel: \
+            SET CHANNEL TO <number>]^";
+    ],
+    before [;
+    SetTo:
+      if(TV hasnt on) "Nothing happens, which is not surprising given that fact \
+                      that the television set is turned off.";
+      if(second==TV.channel) "The TV is already set to that channel.";
+      if(second==3 or 10 or 17) {
+        TV.channel=second;
+        TV.SelectNewProgram();
+        "You change channel.";
+      }
+      if(second<5) TV.channel=3; else if(second<15) TV.channel=10; else TV.channel=17;
+      TV.SelectNewProgram();
+      print "The LED changes to ", second, " but there is no program on \
+            that channel. After a while the TV automatically selects channel ",
+            TV.channel, " instead.^";
+      rtrue;
+    ],
+  has static concealed;
+
+Room Corridor12 "Corridor"
+  with
+    description "This corridor leads east and west, and a bathroom lies \
+      beyond the door to the south.",
+    w_to Corridor11, e_to Corridor1, s_to BathroomDoor,
+  has light;
+
+AutoDoorWithLock BathroomDoor "bathroom door"
+  with
+    name "bathroom",
+    found_in Corridor12 Bathroom,
+    lock_side Bathroom,
+    description [;
+      if(location==Corridor12 || self has open)
+        "There is a sign on the door which reads ~1: Bathroom~";
+      "It's an ordinary wooden door.";
+    ],
+    before [;
+    KnockOn:
+      if(self hasnt open && player in Corridor12 &&
+         (John in Bathroom || Petra in Bathroom))
+        "Someone in the bathroom shouts ~Sorry, it's occupied.~";
+    Lock:
+      if(location~=self.lock_side)
+        "The door can't be locked from this side.";
+     UnLockNoKey:
+        if(self has locked) {
+          if(location==Bathroom) {
+            give self ~locked;
+            "Unlocked.";
+          }
+          else
+            "You are indeed a social disaster. No, I won't let you run into \
+            the bathroom while someone else is in there.";
+        }
+        else
+          "The door isn't locked.";
+    ];
+
+Room Bathroom "Bathroom"
+  with
+    description "This is a rather large space, with all the necessities \
+      of a modern bathroom. There's the obligatory toilet and basin, as well \
+      as a practical shelf next to the basin. A small fusevault is also set \
+      high up on the eastern wall, over the toilet. The only door leads \
+      north.",
+    singledest 'bathroom',
+    n_to BathroomDoor,
+  has light;
+
+Object -> Toilet "toilet"
+  with
+    name "toilet" "john" "wc",
+    description "It looks like every other toilet you've seen.",
+    before [;
+    Use: <<Pee>>;
+    Flush, Rub: "The toilet is clean already.";
+    Receive: if(noun~=player) "Put your unwanted items somewhere else.";
+    ],
+  has enterable supporter open scenery;
+
+ScenerySupporter -> BathroomShelf "shelf"
+  with
+    name "practical" "shelf",
+    description [;
+      self.write_contents(TRUE,
+        "The shelf has been screwed to the wall, right next to the basin.");
+    ];
+
+
+Object -> -> Soap "bar of soap"
+  with
+    name "bar" "of" "soap" "soapbar",
+    description [;
+      if(self has general) {
+        if(self in BoltPocket)
+          "The plug-shaped soap is filling the bolt pocket.";
+        else
+          "The soap bar is now shaped like a square plug.";
+      } else {
+        if(self in BoltPocket)
+          "The soap bar is sticking out of the bolt pocket.";
+        else
+         "The soap bar has hardly been used. It has an oval shape.";
+      }
+    ],
+    before [;
+      Smell: "A nice scent of lavender.";
+      Eat: "Ah, the taste of soap. It brings back memories...";
+      Cut:
+        if(second==nothing && TestScope(Knife)) {
+          print "(using ", (the) Knife, ")^^";
+          <<CutWith noun Knife>>;
+        }
+        print_ret "Cutting ", (the) noun, " with what? Be more specific!";
+      CutWith:
+        if(second~=Knife)
+          print_ret (The) second, " is not sharp enough.";
+
+        if(self has general) "You have already done that.";
+
+        give self general;
+        if(self in BoltPocket) {
+          BoltPocket.unlock_door();
+          print_ret "You cut off the part of ",(the) self,
+                    " which is sticking out of the bolt pocket.";
+        }
+        print_ret "You carve ",(the) self," to an ultra looking square plug.";
+    ];
+
+Sink -> Basin "basin"
+  with
+    name "washbasin" "washing" "wash" "basin" "washingbasin",
+    description [;
+      "The basin is set in the wall, right below the tap.";
+    ],
+    before [;
+      Receive: if(noun hasnt animate && ~~(noun ofclass Liquid))
+        "Better put it on the shelf instead.";
+    ];
+
+Tap -> BathroomTap "tap"
+  with
+    name "bathroom" "tap",
+    parse_name [; return NastyName(self); ],
+    description "It is mounted just above the basin, as one would perhaps \
+      expect.";
+
+SceneryContainer -> FuseVault "fusevault"
+  with
+    name "fuse" "vault" "fusevault" "grey" "gray" "metal" "plate",
+    parse_name [; return NastyName(self); ],
+    description [;
+      print "The vault is made of grey plate, set just under \
+            the ceiling.";
+      self.write_contents(false, " It contains ", " It is empty");
+      print "^";
+    ],
+  has openable;
+
+Burnable -> -> Candle "candle"
+  with
+    name "burning" "candle" "square" "plug",
+
+    will_burn_turns 15,
+    extinguishable true,
+    drop_before_burn false,
+    takeable_while_burning true,
+
+    description [;
+      if(self has general) {
+        if(self in BoltPocket)
+          "The plug-shaped candle is filling the bolt pocket.";
+        else
+          "The candle is now shaped like a square plug.";
+      } else {
+        if(self in BoltPocket)
+          "The candle is sticking out of the bolt pocket.";
+        else
+          "The candle is a thick stick of stearine, roughly 10 \
+          centimetres high and 7 centimetres in diameter.";
+      }
+    ],
+    before [;
+      Cut:
+        if(second==nothing && TestScope(Knife)) {
+          print "(using ", (the) Knife, ")^^";
+          <<CutWith noun Knife>>;
+        }
+        print_ret "Cutting ", (the) noun, " with what? Be more specific!";
+      CutWith:
+        if(second~=Knife)
+          print_ret (The) second, " is not sharp enough.";
+
+        if(self has general) "You have already done that.";
+
+        give self general;
+        if(self in BoltPocket) {
+          BoltPocket.unlock_door();
+          print_ret "You cut off the part of ",(the) self,
+                    " which is sticking out of the bolt pocket.";
+        }
+        print_ret "You carve ",(the) self," to an ultra looking square plug.";
+    ];
+
+Object -> -> CigaretteLighter "cigarette lighter" ! replaced Matchbook
+  with
+    name "cigarette" "lighter" "cheap" "plain" "ordinary",
+    parse_name [; return NastyName(self); ],
+    before [;
+     Burn:
+      "The lighter is working as it should. To set fire to something, using \
+      the lighter, just type BURN OBJECT.";
+    ],
+    description "It's a plain, ordinary cigarette lighter. \
+                A cheap one. You can get it in any store.";
+

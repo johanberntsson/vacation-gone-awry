@@ -1,0 +1,117 @@
+#IFDEF DEBUG;
+Global PathInfo;
+  
+[ PathSub;
+  if(PathInfo==false) 
+  {
+    PathInfo=true;
+    "Pathinfo enabled!";
+  }
+  PathInfo=false;
+  "Pathinfo disabled.";
+];
+
+[ RlockSub;
+  if(metaclass(noun)==Object)
+  {
+    give noun ~open;
+    give noun locked;
+    print (The) noun, " (",noun,") has been locked. You're bad to the bone.^"; 
+  }
+];
+
+[ RunlockSub;
+  if(metaclass(noun)==Object)
+  {
+    give noun ~open;
+    give noun ~locked;
+    print (The) noun, " (",noun,") has been unlocked.^"; 
+  }
+];
+
+[ OnSub x;
+  if(x==0) {
+    wn=consult_from;
+    switch(NextWord()) 
+    {
+     'henkel':
+      x=Henkel;
+     'petra':
+      x=Petra;
+     'john':
+      x=John;
+     'williams':
+      x=Williams;
+     'Schwartz':
+      x=Schwartz;
+     'all':
+      OnSub(Henkel);
+      OnSub(Petra);
+      OnSub(John);
+      OnSub(Williams);
+      OnSub(Schwartz);
+      rtrue;
+    }
+  }
+  
+  if(metaclass(x)==Object && (x provides daemon)) 
+  {
+    StartDaemon(x);
+    print (The) x, "'s daemon has been started.^";
+  }
+  else
+    print (The) x," has no daemon.^";
+  rtrue;
+];
+
+[ OffSub x;
+
+  if(x==0) {
+    wn=consult_from;
+    switch(NextWord()) 
+    {
+     'henkel':
+      x=Henkel;
+     'petra':
+      x=Petra;
+     'john':
+      x=John;
+     'williams':
+      x=Williams;
+     'Schwartz':
+      x=Schwartz;
+     'all':
+      OffSub(Henkel);
+      OffSub(Petra);
+      OffSub(John);
+      OffSub(Williams);
+      OffSub(Schwartz);
+      rtrue;
+    }
+  }
+  if(x provides daemon)
+  {
+    StopDaemon(x);
+    print (The) x, "'s daemon has been stopped.^";
+  }
+  else
+    print (The) x," has no daemon.^";
+  rtrue;
+];
+
+Verb meta "path" "paths" "pathinfo"
+  *                                         -> Path;
+
+Verb meta "rlock"
+  * number                                -> Rlock;
+
+Verb meta "runlock"
+  * number                                -> Runlock;
+
+Verb meta "on"
+  * ConTopic                                -> On;
+
+Verb meta "off"
+  * ConTopic                                -> Off;
+
+#ENDIF;

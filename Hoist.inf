@@ -1,0 +1,154 @@
+
+Object UpperShaft "shaft" Kitchen2
+  with
+    name "lift" "elevator" "shaft" "for" "a",
+!    parse_name [; return NastyName(self, 2); ],
+    initial [;
+      if(Hoist hasnt moved) 
+        "In one corner of the room there is a shaft with an \
+          opening in it. It may be some kind of lift.";
+      print "In one corner of the room is a shaft";
+      if(Hoist notin self) ".";
+      print " with a lift basket in it";
+      if(Hoist.write_contents(false, ", which contains ")) "";
+      ".";
+    ],
+    description [;
+      print "Beside the shaft you can see a wheel. ";
+      if(Hoist notin self) "The shaft is empty.";
+     
+      print "In the shaft is a lift basket, which ";
+      Hoist.write_contents(true, "contains ", "is empty.");
+      "";
+    ],
+    before [;
+    Enter:
+      if(Hoist in self) <<Enter Hoist>>;
+      "You would only break your legs.";
+    Receive:
+      if(Hoist in self) <<Insert noun Hoist>>;
+      "That doesn't appear to be the best solution.";
+!      move noun to Hoist;
+!      print_ret (The) noun, " falls down the shaft.";
+    ],
+  has static container enterable open;
+
+Object UpperWheel "wheel" Kitchen2
+  with
+    name "lift" "elevator" "wheel",
+    parse_name [; return NastyName(self, 2); ],
+    description "The wheel is set in the wall, close to the shaft.",
+    before [x;
+    Turn, Push, Pull:
+      for(x=parent(player): x~=0: x=parent(x))
+        if(x==Hoist) "You can't reach the wheel from the lift basket.";
+      give Hoist moved;
+      if(Hoist in UpperShaft) {
+        move Hoist to LowerShaft;
+        "The lift basket decends down the dark shaft.";
+      }
+      move Hoist to UpperShaft;
+      "The lift basket appears in the shaft.";
+    ],
+  has concealed static;
+
+Object LowerShaft "lift shaft" ECellar
+  with
+    name "lift" "elevator" "shaft" "for" "a",
+!    parse_name [; return NastyName(self, 2); ],
+    initial [;
+      print "In the darkest corner of the room, there is \
+        a shaft";
+      if(Hoist notin self)
+        ".";
+      print ". The hole in the shaft exposes a lift basket";
+      if(Hoist.write_contents(false, " containing ")) "";
+      ".";
+    ],
+    description [;
+      print "Beside the shaft you can see a wheel. ";
+      if(Hoist notin self) "The shaft is empty.";
+     
+      print "In the shaft is a lift basket, which ";
+      Hoist.write_contents(true, "contains ", "is empty.");
+      "";
+    ],
+    before [;
+    Enter:
+      if(Hoist in self) <<Enter Hoist>>;
+      "Since you can't even see the bottom of the shaft, you just \
+        can't get yourself to do it.";
+    Receive:
+      if(Hoist in self) <<Insert noun Hoist>>;
+      "That doesn't appear to be the best solution.";
+!      move noun to Hoist;
+!      print_ret (The) noun, " falls down the shaft.";
+    ],
+  has static container enterable open;
+
+
+
+!Object LowerShaft "lift shaft" ECellar
+!  with
+!    name "lift" "elevator" "for" "a" "shaft",
+!!    parse_name [; return NastyName(self, 1); ],
+!    initial [;
+!      print "There is a shaft for a lift set in one corner.";
+!      if(Hoist in self) { print " "; Hoist.write_contents(); }
+!      "";
+!    ],
+!    description [;
+!      print "The shaft leads up through \
+!             the ceiling. A wheel is set on the outside of the shaft. ";
+!      if(Hoist in self)
+!        Hoist.write_contents(false, " There is a lift basket in the shaft.");
+!      "";
+!    ],
+!  has static container enterable open;
+
+Object LowerWheel "wheel" ECellar
+  with
+    name  "lift" "elevator" "wheel",
+    parse_name [; return NastyName(self, 2); ],
+    description "The wheel is set in the wall, close to the shaft.",
+    before [x;
+    Turn, Push, Pull:
+      for(x=parent(player): x~=location: x=parent(x))
+        if(x==Hoist) "You can't reach the wheel from the lift basket.";
+      give Hoist moved;
+      if(Hoist in LowerShaft) {
+        move Hoist to UpperShaft;
+        "The lift basket is hoisted up the shaft.";
+      }
+      move Hoist to LowerShaft;
+      "The lift basket appears.";
+    ],
+  has concealed static;
+
+SceneryContainer Hoist "lift basket" LowerShaft
+  with
+    name "lift" "elevator" "basket",
+    parse_name [; return NastyName(self, 2); ],
+    description [;
+      print "The lift basket must have been used to move food and ingredients \
+        between the floors of the castle. From the size of it, it looks \
+        like there were many mouths to feed. It ";
+      self.write_contents(true, "currently contains ", "is currently empty.");
+      "";
+    ],
+    before [ x;
+    Receive: if(noun==IronKettle) {
+      move IronKettle to self;
+      "The opening in the shaft seems to have been manufactured to match the \
+        iron kettle perfectly, or possibly the other way around. The kettle \
+        now rests in the lift basket.";
+      }
+    Enter:
+      objectloop(x in player)
+        if(x has huge && x~=IronKettle) "You can't do that while holding ", (the) x, ".";
+      move player to self;
+      "You climb into the lift basket.";
+    
+    ],
+  has enterable transparent open;
+
